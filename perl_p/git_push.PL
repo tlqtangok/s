@@ -12,8 +12,11 @@ if ( @ARGV == 0 ){
 $filename = @ARGV[0];
 
 my @ARGV_MUST_BE_FILES = ();
-
-if (@ARGV >= 2){
+if ( @ARGV == 1 ){
+	@ARGV_MUST_BE_FILES = @ARGV;
+	$comment = &get_timestamp();
+}
+elsif (@ARGV >= 2){
 	@ARGV_MUST_BE_FILES = @ARGV[0..@ARGV-1-1];
 	if (! -e @ARGV[-1]){
 		$comment = @ARGV[-1];
@@ -23,8 +26,9 @@ if (@ARGV >= 2){
 		$comment = &get_timestamp();
 	}
 }
+
 $filename = "@ARGV_MUST_BE_FILES";
-my $git_add_cmd = qq( git add  $filename ); 
+my $git_add_cmd = qq( git add  $filename );  # need first add 
 my $git_commit_cmd =  qq( git commit $filename -m) . qq(') . $comment . qq(') ; 
 
 #print $git_commit_cmd , "\n"; 
