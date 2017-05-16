@@ -1726,3 +1726,70 @@ id_m: !!opencv-matrix
 
     //////////////////////////////////
 
+void clear_img_corner(Mat & id_m){
+
+    for (int i=0;i<id_m.rows/4;i++){
+        for(int j=0;j<id_m.cols/3;j++){
+            for (int k=0;k< id_m.channels();k++){
+                auto t = (id_m.row(i).col(j)).data; 
+                t[k]=255; 
+
+            }
+        }
+    }
+
+}
+
+int _tmain(int argc, char** argv)
+{
+
+
+// cv Filestorage 
+// Write and read
+// %YAML:1.0
+/*
+using namespace std; 
+using namespace cv; 
+
+id_m: !!opencv-matrix
+   rows: 100
+   cols: 40
+   dt: u
+   data: [ 205, 205, 
+*/
+  /*
+    Mat id_m(100,40,CV_8UC(1)); 
+    
+    FileStorage fs("test.yml", FileStorage::WRITE); 
+
+    fs<< "id_m"<< id_m ; 
+
+    fs.release();
+
+    */ 
+    Mat id_mm; 
+
+    FileStorage fsr("test.yml", FileStorage::READ); 
+    fsr["id_m"]>> id_mm; 
+    fsr.release();
+
+
+
+     cout << id_mm.rows << endl ; 
+     cout << id_mm.cols << endl; 
+
+     cout << (int)( id_mm.row(3).col(3).data[0] ) << endl;   //205 default 
+    
+
+    // clear_img_corner( id_mm ); 
+
+     
+     id_mm= id_mm.t();
+
+   imshow("imshow", id_mm ); 
+   waitKey(0);
+
+
+    return -1; 
+
+    //////////////////////////////////
