@@ -1795,3 +1795,42 @@ id_m: !!opencv-matrix
     //////////////////////////////////
 imwrite("test.bmp", id_t); 
 
+int _tmain(int argc, char** argv)
+{
+
+    Mat id_t = Mat::zeros(444,444, CV_8UC(1)); 
+
+
+    int x = 999;
+    char buf[111]={0};
+    sprintf_s(buf, "%d", x);
+
+    
+
+    putText( id_t, string(buf), Point(id_t.cols/2,id_t.rows/2), 1, 1, Scalar(255) ); 
+
+
+   // imshow( "id_t", id_t); 
+
+   // imwrite("test.bmp", id_t); 
+
+    int id = 9; 
+    id_map[id] = id_t ; 
+    id_map[id+1] = id_t; 
+    for ( auto tt : id_map ){
+    tt.first; 
+    auto id_x = tt.second;
+
+    imshow( "id_x", id_x);
+    cv::waitKey(0);
+    
+    }
+
+
+    
+
+
+
+    return -1; 
+
+    //////////////////////////////////
