@@ -1,0 +1,5999 @@
+*********************
+asift.py
+*********************
+#!/usr/bin/env python
+
+'''
+Affine invariant feature-based image matching sample.
+
+This sample is similar to find_obj.py, but uses the affine transformation
+space sampling technique, called ASIFT [1]. While the original implementation
+is based on SIFT, you can try to use SURF or ORB detectors instead. Homography RANSAC
+is used to reject outliers. Threading is used for faster affine sampling.
+
+[1] http://www.ipol.im/pub/algo/my_affine_sift/
+
+USAGE
+  asift.py [--feature=<sift|surf|orb|brisk>[-flann]] [ <image1> <image2> ]
+
+  --feature  - Feature to use. Can be sift, surf, orb or brisk. Append '-flann'
+               to feature name to use Flann-based matcher instead bruteforce.
+
+  Press left mouse button on a feature point to see its matching point.
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+# built-in modules
+import itertools as it
+from multiprocessing.pool import ThreadPool
+
+# local modules
+from common import Timer
+from find_obj import init_feature, filter_matches, explore_match
+
+
+def affine_skew(tilt, phi, img, mask=None):
+    '''
+    affine_skew(tilt, phi, img, mask=None) -> skew_img, skew_mask, Ai
+
+    Ai - is an affine transform matrix from skew_img to img
+    '''
+    h, w = img.shape[:2]
+    if mask is None:
+        mask = np.zeros((h, w), np.uint8)
+        mask[:] = 255
+    A = np.float32([[1, 0, 0], [0, 1, 0]])
+    if phi != 0.0:
+        phi = np.deg2rad(phi)
+        s, c = np.sin(phi), np.cos(phi)
+        A = np.float32([[c,-s], [ s, c]])
+        corners = [[0, 0], [w, 0], [w, h], [0, h]]
+        tcorners = np.int32( np.dot(corners, A.T) )
+        x, y, w, h = cv2.boundingRect(tcorners.reshape(1,-1,2))
+        A = np.hstack([A, [[-x], [-y]]])
+        img = cv2.warpAffine(img, A, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    if tilt != 1.0:
+        s = 0.8*np.sqrt(tilt*tilt-1)
+        img = cv2.GaussianBlur(img, (0, 0), sigmaX=s, sigmaY=0.01)
+        img = cv2.resize(img, (0, 0), fx=1.0/tilt, fy=1.0, interpolation=cv2.INTER_NEAREST)
+        A[0] /= tilt
+    if phi != 0.0 or tilt != 1.0:
+        h, w = img.shape[:2]
+        mask = cv2.warpAffine(mask, A, (w, h), flags=cv2.INTER_NEAREST)
+    Ai = cv2.invertAffineTransform(A)
+    return img, mask, Ai
+
+
+def affine_detect(detector, img, mask=None, pool=None):
+    '''
+    affine_detect(detector, img, mask=None, pool=None) -> keypoints, descrs
+
+    Apply a set of affine transormations to the image, detect keypoints and
+    reproject them into initial image coordinates.
+    See http://www.ipol.im/pub/algo/my_affine_sift/ for the details.
+
+    ThreadPool object may be passed to speedup the computation.
+    '''
+    params = [(1.0, 0.0)]
+    for t in 2**(0.5*np.arange(1,6)):
+        for phi in np.arange(0, 180, 72.0 / t):
+            params.append((t, phi))
+
+    def f(p):
+        t, phi = p
+        timg, tmask, Ai = affine_skew(t, phi, img)
+        keypoints, descrs = detector.detectAndCompute(timg, tmask)
+        for kp in keypoints:
+            x, y = kp.pt
+            kp.pt = tuple( np.dot(Ai, (x, y, 1)) )
+        if descrs is None:
+            descrs = []
+        return keypoints, descrs
+
+    keypoints, descrs = [], []
+    if pool is None:
+        ires = it.imap(f, params)
+    else:
+        ires = pool.imap(f, params)
+
+    for i, (k, d) in enumerate(ires):
+        print('affine sampling: %d / %d\r' % (i+1, len(params)), end='')
+        keypoints.extend(k)
+        descrs.extend(d)
+
+    print()
+    return keypoints, np.array(descrs)
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    import sys, getopt
+    opts, args = getopt.getopt(sys.argv[1:], '', ['feature='])
+    opts = dict(opts)
+    feature_name = opts.get('--feature', 'brisk-flann')
+    try:
+        fn1, fn2 = args
+    except:
+        fn1 = '../data/aero1.jpg'
+        fn2 = '../data/aero3.jpg'
+
+    img1 = cv2.imread(fn1, 0)
+    img2 = cv2.imread(fn2, 0)
+    detector, matcher = init_feature(feature_name)
+
+    if img1 is None:
+        print('Failed to load fn1:', fn1)
+        sys.exit(1)
+
+    if img2 is None:
+        print('Failed to load fn2:', fn2)
+        sys.exit(1)
+
+    if detector is None:
+        print('unknown feature:', feature_name)
+        sys.exit(1)
+
+    print('using', feature_name)
+
+    pool=ThreadPool(processes = cv2.getNumberOfCPUs())
+    kp1, desc1 = affine_detect(detector, img1, pool=pool)
+    kp2, desc2 = affine_detect(detector, img2, pool=pool)
+    print('img1 - %d features, img2 - %d features' % (len(kp1), len(kp2)))
+
+    def match_and_draw(win):
+        with Timer('matching'):
+            raw_matches = matcher.knnMatch(desc1, trainDescriptors = desc2, k = 2) #2
+        p1, p2, kp_pairs = filter_matches(kp1, kp2, raw_matches)
+        if len(p1) >= 4:
+            H, status = cv2.findHomography(p1, p2, cv2.RANSAC, 5.0)
+            print('%d / %d  inliers/matched' % (np.sum(status), len(status)))
+            # do not draw outliers (there will be a lot of them)
+            kp_pairs = [kpp for kpp, flag in zip(kp_pairs, status) if flag]
+        else:
+            H, status = None, None
+            print('%d matches found, not enough for homography estimation' % len(p1))
+
+        vis = explore_match(win, img1, img2, kp_pairs, None, H)
+
+
+    match_and_draw('affine find_obj')
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+
+*********************
+browse.py
+*********************
+#!/usr/bin/env python
+
+'''
+browse.py
+=========
+
+Sample shows how to implement a simple hi resolution image navigation
+
+Usage
+-----
+browse.py [image filename]
+
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    xrange = range
+
+import numpy as np
+import cv2
+
+# built-in modules
+import sys
+
+if __name__ == '__main__':
+    print('This sample shows how to implement a simple hi resolution image navigation.')
+    print('USAGE: browse.py [image filename]')
+    print()
+
+    if len(sys.argv) > 1:
+        fn = sys.argv[1]
+        print('loading %s ...' % fn)
+        img = cv2.imread(fn)
+        if img is None:
+            print('Failed to load fn:', fn)
+            sys.exit(1)
+
+    else:
+        sz = 4096
+        print('generating %dx%d procedural image ...' % (sz, sz))
+        img = np.zeros((sz, sz), np.uint8)
+        track = np.cumsum(np.random.rand(500000, 2)-0.5, axis=0)
+        track = np.int32(track*10 + (sz/2, sz/2))
+        cv2.polylines(img, [track], 0, 255, 1, cv2.LINE_AA)
+
+
+    small = img
+    for i in xrange(3):
+        small = cv2.pyrDown(small)
+
+    def onmouse(event, x, y, flags, param):
+        h, w = img.shape[:2]
+        h1, w1 = small.shape[:2]
+        x, y = 1.0*x*h/h1, 1.0*y*h/h1
+        zoom = cv2.getRectSubPix(img, (800, 600), (x+0.5, y+0.5))
+        cv2.imshow('zoom', zoom)
+
+    cv2.imshow('preview', small)
+    cv2.setMouseCallback('preview', onmouse)
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+
+*********************
+calibrate.py
+*********************
+#!/usr/bin/env python
+
+'''
+camera calibration for distorted images with chess board samples
+reads distorted images, calculates the calibration and write undistorted images
+
+usage:
+    calibrate.py [--debug <output path>] [--square_size] [<image mask>]
+
+default values:
+    --debug:    ./output/
+    --square_size: 1.0
+    <image mask> defaults to ../data/left*.jpg
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+# local modules
+from common import splitfn
+
+# built-in modules
+import os
+
+if __name__ == '__main__':
+    import sys
+    import getopt
+    from glob import glob
+
+    args, img_mask = getopt.getopt(sys.argv[1:], '', ['debug=', 'square_size='])
+    args = dict(args)
+    args.setdefault('--debug', './output/')
+    args.setdefault('--square_size', 1.0)
+    if not img_mask:
+        img_mask = '../data/left*.jpg'  # default
+    else:
+        img_mask = img_mask[0]
+
+    img_names = glob(img_mask)
+    debug_dir = args.get('--debug')
+    if not os.path.isdir(debug_dir):
+        os.mkdir(debug_dir)
+    square_size = float(args.get('--square_size'))
+
+    pattern_size = (9, 6)
+    pattern_points = np.zeros((np.prod(pattern_size), 3), np.float32)
+    pattern_points[:, :2] = np.indices(pattern_size).T.reshape(-1, 2)
+    pattern_points *= square_size
+
+    obj_points = []
+    img_points = []
+    h, w = 0, 0
+    img_names_undistort = []
+    for fn in img_names:
+        print('processing %s... ' % fn, end='')
+        img = cv2.imread(fn, 0)
+        if img is None:
+            print("Failed to load", fn)
+            continue
+
+        h, w = img.shape[:2]
+        found, corners = cv2.findChessboardCorners(img, pattern_size)
+        if found:
+            term = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 30, 0.1)
+            cv2.cornerSubPix(img, corners, (5, 5), (-1, -1), term)
+
+        if debug_dir:
+            vis = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+            cv2.drawChessboardCorners(vis, pattern_size, corners, found)
+            path, name, ext = splitfn(fn)
+            outfile = debug_dir + name + '_chess.png'
+            cv2.imwrite(outfile, vis)
+            if found:
+                img_names_undistort.append(outfile)
+
+        if not found:
+            print('chessboard not found')
+            continue
+
+        img_points.append(corners.reshape(-1, 2))
+        obj_points.append(pattern_points)
+
+        print('ok')
+
+    # calculate camera distortion
+    rms, camera_matrix, dist_coefs, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, (w, h), None, None)
+
+    print("\nRMS:", rms)
+    print("camera matrix:\n", camera_matrix)
+    print("distortion coefficients: ", dist_coefs.ravel())
+
+    # undistort the image with the calibration
+    print('')
+    for img_found in img_names_undistort:
+        img = cv2.imread(img_found)
+
+        h,  w = img.shape[:2]
+        newcameramtx, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coefs, (w, h), 1, (w, h))
+
+        dst = cv2.undistort(img, camera_matrix, dist_coefs, None, newcameramtx)
+
+        # crop and save the image
+        x, y, w, h = roi
+        dst = dst[y:y+h, x:x+w]
+        outfile = img_found + '_undistorted.png'
+        print('Undistorted image written to: %s' % outfile)
+        cv2.imwrite(outfile, dst)
+
+    cv2.destroyAllWindows()
+
+*********************
+camshift.py
+*********************
+#!/usr/bin/env python
+
+'''
+Camshift tracker
+================
+
+This is a demo that shows mean-shift based tracking
+You select a color objects such as your face and it tracks it.
+This reads from video camera (0 by default, or the camera number the user enters)
+
+http://www.robinhewitt.com/research/track/camshift.html
+
+Usage:
+------
+    camshift.py [<video source>]
+
+    To initialize tracking, select the object with mouse
+
+Keys:
+-----
+    ESC   - exit
+    b     - toggle back-projected probability visualization
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    xrange = range
+
+import numpy as np
+import cv2
+
+# local module
+import video
+from video import presets
+
+
+class App(object):
+    def __init__(self, video_src):
+        self.cam = video.create_capture(video_src, presets['cube'])
+        ret, self.frame = self.cam.read()
+        cv2.namedWindow('camshift')
+        cv2.setMouseCallback('camshift', self.onmouse)
+
+        self.selection = None
+        self.drag_start = None
+        self.show_backproj = False
+        self.track_window = None
+
+    def onmouse(self, event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            self.drag_start = (x, y)
+            self.track_window = None
+        if self.drag_start:
+            xmin = min(x, self.drag_start[0])
+            ymin = min(y, self.drag_start[1])
+            xmax = max(x, self.drag_start[0])
+            ymax = max(y, self.drag_start[1])
+            self.selection = (xmin, ymin, xmax, ymax)
+        if event == cv2.EVENT_LBUTTONUP:
+            self.drag_start = None
+            self.track_window = (xmin, ymin, xmax - xmin, ymax - ymin)
+
+    def show_hist(self):
+        bin_count = self.hist.shape[0]
+        bin_w = 24
+        img = np.zeros((256, bin_count*bin_w, 3), np.uint8)
+        for i in xrange(bin_count):
+            h = int(self.hist[i])
+            cv2.rectangle(img, (i*bin_w+2, 255), ((i+1)*bin_w-2, 255-h), (int(180.0*i/bin_count), 255, 255), -1)
+        img = cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
+        cv2.imshow('hist', img)
+
+    def run(self):
+        while True:
+            ret, self.frame = self.cam.read()
+            vis = self.frame.copy()
+            hsv = cv2.cvtColor(self.frame, cv2.COLOR_BGR2HSV)
+            mask = cv2.inRange(hsv, np.array((0., 60., 32.)), np.array((180., 255., 255.)))
+
+            if self.selection:
+                x0, y0, x1, y1 = self.selection
+                hsv_roi = hsv[y0:y1, x0:x1]
+                mask_roi = mask[y0:y1, x0:x1]
+                hist = cv2.calcHist( [hsv_roi], [0], mask_roi, [16], [0, 180] )
+                cv2.normalize(hist, hist, 0, 255, cv2.NORM_MINMAX)
+                self.hist = hist.reshape(-1)
+                self.show_hist()
+
+                vis_roi = vis[y0:y1, x0:x1]
+                cv2.bitwise_not(vis_roi, vis_roi)
+                vis[mask == 0] = 0
+
+            if self.track_window and self.track_window[2] > 0 and self.track_window[3] > 0:
+                self.selection = None
+                prob = cv2.calcBackProject([hsv], [0], self.hist, [0, 180], 1)
+                prob &= mask
+                term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
+                track_box, self.track_window = cv2.CamShift(prob, self.track_window, term_crit)
+
+                if self.show_backproj:
+                    vis[:] = prob[...,np.newaxis]
+                try:
+                    cv2.ellipse(vis, track_box, (0, 0, 255), 2)
+                except:
+                    print(track_box)
+
+            cv2.imshow('camshift', vis)
+
+            ch = cv2.waitKey(5)
+            if ch == 27:
+                break
+            if ch == ord('b'):
+                self.show_backproj = not self.show_backproj
+        cv2.destroyAllWindows()
+
+
+if __name__ == '__main__':
+    import sys
+    try:
+        video_src = sys.argv[1]
+    except:
+        video_src = 0
+    print(__doc__)
+    App(video_src).run()
+
+*********************
+coherence.py
+*********************
+#!/usr/bin/env python
+
+'''
+Coherence-enhancing filtering example
+=====================================
+
+inspired by
+  Joachim Weickert "Coherence-Enhancing Shock Filters"
+  http://www.mia.uni-saarland.de/Publications/weickert-dagm03.pdf
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    xrange = range
+
+import numpy as np
+import cv2
+
+def coherence_filter(img, sigma = 11, str_sigma = 11, blend = 0.5, iter_n = 4):
+    h, w = img.shape[:2]
+
+    for i in xrange(iter_n):
+        print(i)
+
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        eigen = cv2.cornerEigenValsAndVecs(gray, str_sigma, 3)
+        eigen = eigen.reshape(h, w, 3, 2)  # [[e1, e2], v1, v2]
+        x, y = eigen[:,:,1,0], eigen[:,:,1,1]
+
+        gxx = cv2.Sobel(gray, cv2.CV_32F, 2, 0, ksize=sigma)
+        gxy = cv2.Sobel(gray, cv2.CV_32F, 1, 1, ksize=sigma)
+        gyy = cv2.Sobel(gray, cv2.CV_32F, 0, 2, ksize=sigma)
+        gvv = x*x*gxx + 2*x*y*gxy + y*y*gyy
+        m = gvv < 0
+
+        ero = cv2.erode(img, None)
+        dil = cv2.dilate(img, None)
+        img1 = ero
+        img1[m] = dil[m]
+        img = np.uint8(img*(1.0 - blend) + img1*blend)
+    print('done')
+    return img
+
+
+if __name__ == '__main__':
+    import sys
+    try:
+        fn = sys.argv[1]
+    except:
+        fn = '../data/baboon.jpg'
+
+    src = cv2.imread(fn)
+
+    def nothing(*argv):
+        pass
+
+    def update():
+        sigma = cv2.getTrackbarPos('sigma', 'control')*2+1
+        str_sigma = cv2.getTrackbarPos('str_sigma', 'control')*2+1
+        blend = cv2.getTrackbarPos('blend', 'control') / 10.0
+        print('sigma: %d  str_sigma: %d  blend_coef: %f' % (sigma, str_sigma, blend))
+        dst = coherence_filter(src, sigma=sigma, str_sigma = str_sigma, blend = blend)
+        cv2.imshow('dst', dst)
+
+    cv2.namedWindow('control', 0)
+    cv2.createTrackbar('sigma', 'control', 9, 15, nothing)
+    cv2.createTrackbar('blend', 'control', 7, 10, nothing)
+    cv2.createTrackbar('str_sigma', 'control', 9, 15, nothing)
+
+
+    print('Press SPACE to update the image\n')
+
+    cv2.imshow('src', src)
+    update()
+    while True:
+        ch = cv2.waitKey()
+        if ch == ord(' '):
+            update()
+        if ch == 27:
+            break
+    cv2.destroyAllWindows()
+
+*********************
+color_histogram.py
+*********************
+#!/usr/bin/env python
+
+'''
+Video histogram sample to show live histogram of video
+
+Keys:
+    ESC    - exit
+
+'''
+
+import numpy as np
+import cv2
+
+# built-in modules
+import sys
+
+# local modules
+import video
+
+if __name__ == '__main__':
+
+    hsv_map = np.zeros((180, 256, 3), np.uint8)
+    h, s = np.indices(hsv_map.shape[:2])
+    hsv_map[:,:,0] = h
+    hsv_map[:,:,1] = s
+    hsv_map[:,:,2] = 255
+    hsv_map = cv2.cvtColor(hsv_map, cv2.COLOR_HSV2BGR)
+    cv2.imshow('hsv_map', hsv_map)
+
+    cv2.namedWindow('hist', 0)
+    hist_scale = 10
+
+    def set_scale(val):
+        global hist_scale
+        hist_scale = val
+    cv2.createTrackbar('scale', 'hist', hist_scale, 32, set_scale)
+
+    try:
+        fn = sys.argv[1]
+    except:
+        fn = 0
+    cam = video.create_capture(fn, fallback='synth:bg=../data/baboon.jpg:class=chess:noise=0.05')
+
+    while True:
+        flag, frame = cam.read()
+        cv2.imshow('camera', frame)
+
+        small = cv2.pyrDown(frame)
+
+        hsv = cv2.cvtColor(small, cv2.COLOR_BGR2HSV)
+        dark = hsv[...,2] < 32
+        hsv[dark] = 0
+        h = cv2.calcHist([hsv], [0, 1], None, [180, 256], [0, 180, 0, 256])
+
+        h = np.clip(h*0.005*hist_scale, 0, 1)
+        vis = hsv_map*h[:,:,np.newaxis] / 255.0
+        cv2.imshow('hist', vis)
+
+        ch = cv2.waitKey(1)
+        if ch == 27:
+            break
+    cv2.destroyAllWindows()
+
+*********************
+common.py
+*********************
+#!/usr/bin/env python
+
+'''
+This module contains some common routines used by other samples.
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    from functools import reduce
+
+import numpy as np
+import cv2
+
+# built-in modules
+import os
+import itertools as it
+from contextlib import contextmanager
+
+image_extensions = ['.bmp', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.pbm', '.pgm', '.ppm']
+
+class Bunch(object):
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+    def __str__(self):
+        return str(self.__dict__)
+
+def splitfn(fn):
+    path, fn = os.path.split(fn)
+    name, ext = os.path.splitext(fn)
+    return path, name, ext
+
+def anorm2(a):
+    return (a*a).sum(-1)
+def anorm(a):
+    return np.sqrt( anorm2(a) )
+
+def homotrans(H, x, y):
+    xs = H[0, 0]*x + H[0, 1]*y + H[0, 2]
+    ys = H[1, 0]*x + H[1, 1]*y + H[1, 2]
+    s  = H[2, 0]*x + H[2, 1]*y + H[2, 2]
+    return xs/s, ys/s
+
+def to_rect(a):
+    a = np.ravel(a)
+    if len(a) == 2:
+        a = (0, 0, a[0], a[1])
+    return np.array(a, np.float64).reshape(2, 2)
+
+def rect2rect_mtx(src, dst):
+    src, dst = to_rect(src), to_rect(dst)
+    cx, cy = (dst[1] - dst[0]) / (src[1] - src[0])
+    tx, ty = dst[0] - src[0] * (cx, cy)
+    M = np.float64([[ cx,  0, tx],
+                    [  0, cy, ty],
+                    [  0,  0,  1]])
+    return M
+
+
+def lookat(eye, target, up = (0, 0, 1)):
+    fwd = np.asarray(target, np.float64) - eye
+    fwd /= anorm(fwd)
+    right = np.cross(fwd, up)
+    right /= anorm(right)
+    down = np.cross(fwd, right)
+    R = np.float64([right, down, fwd])
+    tvec = -np.dot(R, eye)
+    return R, tvec
+
+def mtx2rvec(R):
+    w, u, vt = cv2.SVDecomp(R - np.eye(3))
+    p = vt[0] + u[:,0]*w[0]    # same as np.dot(R, vt[0])
+    c = np.dot(vt[0], p)
+    s = np.dot(vt[1], p)
+    axis = np.cross(vt[0], vt[1])
+    return axis * np.arctan2(s, c)
+
+def draw_str(dst, target, s):
+    x, y = target
+    cv2.putText(dst, s, (x+1, y+1), cv2.FONT_HERSHEY_PLAIN, 1.0, (0, 0, 0), thickness = 2, lineType=cv2.LINE_AA)
+    cv2.putText(dst, s, (x, y), cv2.FONT_HERSHEY_PLAIN, 1.0, (255, 255, 255), lineType=cv2.LINE_AA)
+
+class Sketcher:
+    def __init__(self, windowname, dests, colors_func):
+        self.prev_pt = None
+        self.windowname = windowname
+        self.dests = dests
+        self.colors_func = colors_func
+        self.dirty = False
+        self.show()
+        cv2.setMouseCallback(self.windowname, self.on_mouse)
+
+    def show(self):
+        cv2.imshow(self.windowname, self.dests[0])
+
+    def on_mouse(self, event, x, y, flags, param):
+        pt = (x, y)
+        if event == cv2.EVENT_LBUTTONDOWN:
+            self.prev_pt = pt
+        elif event == cv2.EVENT_LBUTTONUP:
+            self.prev_pt = None
+
+        if self.prev_pt and flags & cv2.EVENT_FLAG_LBUTTON:
+            for dst, color in zip(self.dests, self.colors_func()):
+                cv2.line(dst, self.prev_pt, pt, color, 5)
+            self.dirty = True
+            self.prev_pt = pt
+            self.show()
+
+
+# palette data from matplotlib/_cm.py
+_jet_data =   {'red':   ((0., 0, 0), (0.35, 0, 0), (0.66, 1, 1), (0.89,1, 1),
+                         (1, 0.5, 0.5)),
+               'green': ((0., 0, 0), (0.125,0, 0), (0.375,1, 1), (0.64,1, 1),
+                         (0.91,0,0), (1, 0, 0)),
+               'blue':  ((0., 0.5, 0.5), (0.11, 1, 1), (0.34, 1, 1), (0.65,0, 0),
+                         (1, 0, 0))}
+
+cmap_data = { 'jet' : _jet_data }
+
+def make_cmap(name, n=256):
+    data = cmap_data[name]
+    xs = np.linspace(0.0, 1.0, n)
+    channels = []
+    eps = 1e-6
+    for ch_name in ['blue', 'green', 'red']:
+        ch_data = data[ch_name]
+        xp, yp = [], []
+        for x, y1, y2 in ch_data:
+            xp += [x, x+eps]
+            yp += [y1, y2]
+        ch = np.interp(xs, xp, yp)
+        channels.append(ch)
+    return np.uint8(np.array(channels).T*255)
+
+def nothing(*arg, **kw):
+    pass
+
+def clock():
+    return cv2.getTickCount() / cv2.getTickFrequency()
+
+@contextmanager
+def Timer(msg):
+    print(msg, '...',)
+    start = clock()
+    try:
+        yield
+    finally:
+        print("%.2f ms" % ((clock()-start)*1000))
+
+class StatValue:
+    def __init__(self, smooth_coef = 0.5):
+        self.value = None
+        self.smooth_coef = smooth_coef
+    def update(self, v):
+        if self.value is None:
+            self.value = v
+        else:
+            c = self.smooth_coef
+            self.value = c * self.value + (1.0-c) * v
+
+class RectSelector:
+    def __init__(self, win, callback):
+        self.win = win
+        self.callback = callback
+        cv2.setMouseCallback(win, self.onmouse)
+        self.drag_start = None
+        self.drag_rect = None
+    def onmouse(self, event, x, y, flags, param):
+        x, y = np.int16([x, y]) # BUG
+        if event == cv2.EVENT_LBUTTONDOWN:
+            self.drag_start = (x, y)
+            return
+        if self.drag_start:
+            if flags & cv2.EVENT_FLAG_LBUTTON:
+                xo, yo = self.drag_start
+                x0, y0 = np.minimum([xo, yo], [x, y])
+                x1, y1 = np.maximum([xo, yo], [x, y])
+                self.drag_rect = None
+                if x1-x0 > 0 and y1-y0 > 0:
+                    self.drag_rect = (x0, y0, x1, y1)
+            else:
+                rect = self.drag_rect
+                self.drag_start = None
+                self.drag_rect = None
+                if rect:
+                    self.callback(rect)
+    def draw(self, vis):
+        if not self.drag_rect:
+            return False
+        x0, y0, x1, y1 = self.drag_rect
+        cv2.rectangle(vis, (x0, y0), (x1, y1), (0, 255, 0), 2)
+        return True
+    @property
+    def dragging(self):
+        return self.drag_rect is not None
+
+
+def grouper(n, iterable, fillvalue=None):
+    '''grouper(3, 'ABCDEFG', 'x') --> ABC DEF Gxx'''
+    args = [iter(iterable)] * n
+    if PY3:
+        output = it.zip_longest(fillvalue=fillvalue, *args)
+    else:
+        output = it.izip_longest(fillvalue=fillvalue, *args)
+    return output
+
+def mosaic(w, imgs):
+    '''Make a grid from images.
+
+    w    -- number of grid columns
+    imgs -- images (must have same size and format)
+    '''
+    imgs = iter(imgs)
+    if PY3:
+        img0 = next(imgs)
+    else:
+        img0 = imgs.next()
+    pad = np.zeros_like(img0)
+    imgs = it.chain([img0], imgs)
+    rows = grouper(w, imgs, pad)
+    return np.vstack(map(np.hstack, rows))
+
+def getsize(img):
+    h, w = img.shape[:2]
+    return w, h
+
+def mdot(*args):
+    return reduce(np.dot, args)
+
+def draw_keypoints(vis, keypoints, color = (0, 255, 255)):
+    for kp in keypoints:
+            x, y = kp.pt
+            cv2.circle(vis, (int(x), int(y)), 2, color)
+
+*********************
+contours.py
+*********************
+#!/usr/bin/env python
+
+'''
+This program illustrates the use of findContours and drawContours.
+The original image is put up along with the image of drawn contours.
+
+Usage:
+    contours.py
+A trackbar is put up which controls the contour level from -3 to 3
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    xrange = range
+
+import numpy as np
+import cv2
+
+def make_image():
+    img = np.zeros((500, 500), np.uint8)
+    black, white = 0, 255
+    for i in xrange(6):
+        dx = int((i%2)*250 - 30)
+        dy = int((i/2.)*150)
+
+        if i == 0:
+            for j in xrange(11):
+                angle = (j+5)*np.pi/21
+                c, s = np.cos(angle), np.sin(angle)
+                x1, y1 = np.int32([dx+100+j*10-80*c, dy+100-90*s])
+                x2, y2 = np.int32([dx+100+j*10-30*c, dy+100-30*s])
+                cv2.line(img, (x1, y1), (x2, y2), white)
+
+        cv2.ellipse( img, (dx+150, dy+100), (100,70), 0, 0, 360, white, -1 )
+        cv2.ellipse( img, (dx+115, dy+70), (30,20), 0, 0, 360, black, -1 )
+        cv2.ellipse( img, (dx+185, dy+70), (30,20), 0, 0, 360, black, -1 )
+        cv2.ellipse( img, (dx+115, dy+70), (15,15), 0, 0, 360, white, -1 )
+        cv2.ellipse( img, (dx+185, dy+70), (15,15), 0, 0, 360, white, -1 )
+        cv2.ellipse( img, (dx+115, dy+70), (5,5), 0, 0, 360, black, -1 )
+        cv2.ellipse( img, (dx+185, dy+70), (5,5), 0, 0, 360, black, -1 )
+        cv2.ellipse( img, (dx+150, dy+100), (10,5), 0, 0, 360, black, -1 )
+        cv2.ellipse( img, (dx+150, dy+150), (40,10), 0, 0, 360, black, -1 )
+        cv2.ellipse( img, (dx+27, dy+100), (20,35), 0, 0, 360, white, -1 )
+        cv2.ellipse( img, (dx+273, dy+100), (20,35), 0, 0, 360, white, -1 )
+    return img
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    img = make_image()
+    h, w = img.shape[:2]
+
+    _, contours0, hierarchy = cv2.findContours( img.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours = [cv2.approxPolyDP(cnt, 3, True) for cnt in contours0]
+
+    def update(levels):
+        vis = np.zeros((h, w, 3), np.uint8)
+        levels = levels - 3
+        cv2.drawContours( vis, contours, (-1, 2)[levels <= 0], (128,255,255),
+            3, cv2.LINE_AA, hierarchy, abs(levels) )
+        cv2.imshow('contours', vis)
+    update(3)
+    cv2.createTrackbar( "levels+3", "contours", 3, 7, update )
+    cv2.imshow('image', img)
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+
+*********************
+_coverage.py
+*********************
+#!/usr/bin/env python
+
+'''
+Utility for measuring python opencv API coverage by samples.
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+from glob import glob
+import cv2
+import re
+
+if __name__ == '__main__':
+    cv2_callable = set(['cv2.'+name for name in dir(cv2) if callable( getattr(cv2, name) )])
+
+    found = set()
+    for fn in glob('*.py'):
+        print(' --- ', fn)
+        code = open(fn).read()
+        found |= set(re.findall('cv2?\.\w+', code))
+
+    cv2_used = found & cv2_callable
+    cv2_unused = cv2_callable - cv2_used
+    with open('unused_api.txt', 'w') as f:
+        f.write('\n'.join(sorted(cv2_unused)))
+
+    r = 1.0 * len(cv2_used) / len(cv2_callable)
+    print('\ncv2 api coverage: %d / %d  (%.1f%%)' % ( len(cv2_used), len(cv2_callable), r*100 ))
+
+*********************
+deconvolution.py
+*********************
+#!/usr/bin/env python
+
+'''
+Wiener deconvolution.
+
+Sample shows how DFT can be used to perform Weiner deconvolution [1]
+of an image with user-defined point spread function (PSF)
+
+Usage:
+  deconvolution.py  [--circle]
+      [--angle <degrees>]
+      [--d <diameter>]
+      [--snr <signal/noise ratio in db>]
+      [<input image>]
+
+  Use sliders to adjust PSF paramitiers.
+  Keys:
+    SPACE - switch btw linear/cirular PSF
+    ESC   - exit
+
+Examples:
+  deconvolution.py --angle 135 --d 22  ../data/licenseplate_motion.jpg
+    (image source: http://www.topazlabs.com/infocus/_images/licenseplate_compare.jpg)
+
+  deconvolution.py --angle 86 --d 31  ../data/text_motion.jpg
+  deconvolution.py --circle --d 19  ../data/text_defocus.jpg
+    (image source: compact digital photo camera, no artificial distortion)
+
+
+[1] http://en.wikipedia.org/wiki/Wiener_deconvolution
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+# local module
+from common import nothing
+
+
+def blur_edge(img, d=31):
+    h, w  = img.shape[:2]
+    img_pad = cv2.copyMakeBorder(img, d, d, d, d, cv2.BORDER_WRAP)
+    img_blur = cv2.GaussianBlur(img_pad, (2*d+1, 2*d+1), -1)[d:-d,d:-d]
+    y, x = np.indices((h, w))
+    dist = np.dstack([x, w-x-1, y, h-y-1]).min(-1)
+    w = np.minimum(np.float32(dist)/d, 1.0)
+    return img*w + img_blur*(1-w)
+
+def motion_kernel(angle, d, sz=65):
+    kern = np.ones((1, d), np.float32)
+    c, s = np.cos(angle), np.sin(angle)
+    A = np.float32([[c, -s, 0], [s, c, 0]])
+    sz2 = sz // 2
+    A[:,2] = (sz2, sz2) - np.dot(A[:,:2], ((d-1)*0.5, 0))
+    kern = cv2.warpAffine(kern, A, (sz, sz), flags=cv2.INTER_CUBIC)
+    return kern
+
+def defocus_kernel(d, sz=65):
+    kern = np.zeros((sz, sz), np.uint8)
+    cv2.circle(kern, (sz, sz), d, 255, -1, cv2.LINE_AA, shift=1)
+    kern = np.float32(kern) / 255.0
+    return kern
+
+
+if __name__ == '__main__':
+    print(__doc__)
+    import sys, getopt
+    opts, args = getopt.getopt(sys.argv[1:], '', ['circle', 'angle=', 'd=', 'snr='])
+    opts = dict(opts)
+    try:
+        fn = args[0]
+    except:
+        fn = '../data/licenseplate_motion.jpg'
+
+    win = 'deconvolution'
+
+    img = cv2.imread(fn, 0)
+    if img is None:
+        print('Failed to load fn1:', fn1)
+        sys.exit(1)
+
+    img = np.float32(img)/255.0
+    cv2.imshow('input', img)
+
+    img = blur_edge(img)
+    IMG = cv2.dft(img, flags=cv2.DFT_COMPLEX_OUTPUT)
+
+    defocus = '--circle' in opts
+
+    def update(_):
+        ang = np.deg2rad( cv2.getTrackbarPos('angle', win) )
+        d = cv2.getTrackbarPos('d', win)
+        noise = 10**(-0.1*cv2.getTrackbarPos('SNR (db)', win))
+
+        if defocus:
+            psf = defocus_kernel(d)
+        else:
+            psf = motion_kernel(ang, d)
+        cv2.imshow('psf', psf)
+
+        psf /= psf.sum()
+        psf_pad = np.zeros_like(img)
+        kh, kw = psf.shape
+        psf_pad[:kh, :kw] = psf
+        PSF = cv2.dft(psf_pad, flags=cv2.DFT_COMPLEX_OUTPUT, nonzeroRows = kh)
+        PSF2 = (PSF**2).sum(-1)
+        iPSF = PSF / (PSF2 + noise)[...,np.newaxis]
+        RES = cv2.mulSpectrums(IMG, iPSF, 0)
+        res = cv2.idft(RES, flags=cv2.DFT_SCALE | cv2.DFT_REAL_OUTPUT )
+        res = np.roll(res, -kh//2, 0)
+        res = np.roll(res, -kw//2, 1)
+        cv2.imshow(win, res)
+
+    cv2.namedWindow(win)
+    cv2.namedWindow('psf', 0)
+    cv2.createTrackbar('angle', win, int(opts.get('--angle', 135)), 180, update)
+    cv2.createTrackbar('d', win, int(opts.get('--d', 22)), 50, update)
+    cv2.createTrackbar('SNR (db)', win, int(opts.get('--snr', 25)), 50, update)
+    update(None)
+
+    while True:
+        ch = cv2.waitKey()
+        if ch == 27:
+            break
+        if ch == ord(' '):
+            defocus = not defocus
+            update(None)
+
+*********************
+demo.py
+*********************
+#!/usr/bin/env python
+
+'''
+Sample-launcher application.
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+# local modules
+from common import splitfn
+
+# built-in modules
+import webbrowser
+from glob import glob
+from subprocess import Popen
+
+if PY3:
+    import tkinter as tk
+    from tkinter.scrolledtext import ScrolledText
+else:
+    import Tkinter as tk
+    from ScrolledText import ScrolledText
+
+
+#from IPython.Shell import IPShellEmbed
+#ipshell = IPShellEmbed()
+
+exclude_list = ['demo', 'common']
+
+class LinkManager:
+    def __init__(self, text, url_callback = None):
+        self.text = text
+        self.text.tag_config("link", foreground="blue", underline=1)
+        self.text.tag_bind("link", "<Enter>", self._enter)
+        self.text.tag_bind("link", "<Leave>", self._leave)
+        self.text.tag_bind("link", "<Button-1>", self._click)
+
+        self.url_callback = url_callback
+        self.reset()
+
+    def reset(self):
+        self.links = {}
+    def add(self, action):
+        # add an action to the manager.  returns tags to use in
+        # associated text widget
+        tag = "link-%d" % len(self.links)
+        self.links[tag] = action
+        return "link", tag
+
+    def _enter(self, event):
+        self.text.config(cursor="hand2")
+    def _leave(self, event):
+        self.text.config(cursor="")
+    def _click(self, event):
+        for tag in self.text.tag_names(tk.CURRENT):
+            if tag.startswith("link-"):
+                proc = self.links[tag]
+                if callable(proc):
+                    proc()
+                else:
+                    if self.url_callback:
+                        self.url_callback(proc)
+
+class App:
+    def __init__(self):
+        root = tk.Tk()
+        root.title('OpenCV Demo')
+
+        self.win = win = tk.PanedWindow(root, orient=tk.HORIZONTAL, sashrelief=tk.RAISED, sashwidth=4)
+        self.win.pack(fill=tk.BOTH, expand=1)
+
+        left = tk.Frame(win)
+        right = tk.Frame(win)
+        win.add(left)
+        win.add(right)
+
+        scrollbar = tk.Scrollbar(left, orient=tk.VERTICAL)
+        self.demos_lb = demos_lb = tk.Listbox(left, yscrollcommand=scrollbar.set)
+        scrollbar.config(command=demos_lb.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        demos_lb.pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
+
+        self.samples = {}
+        for fn in glob('*.py'):
+            name = splitfn(fn)[1]
+            if fn[0] != '_' and name not in exclude_list:
+                self.samples[name] = fn
+
+        for name in sorted(self.samples):
+            demos_lb.insert(tk.END, name)
+
+        demos_lb.bind('<<ListboxSelect>>', self.on_demo_select)
+
+        self.cmd_entry = cmd_entry = tk.Entry(right)
+        cmd_entry.bind('<Return>', self.on_run)
+        run_btn = tk.Button(right, command=self.on_run, text='Run', width=8)
+
+        self.text = text = ScrolledText(right, font=('arial', 12, 'normal'), width = 30, wrap='word')
+        self.linker = linker = LinkManager(text, self.on_link)
+        self.text.tag_config("header1", font=('arial', 14, 'bold'))
+        self.text.tag_config("header2", font=('arial', 12, 'bold'))
+        text.config(state='disabled')
+
+        text.pack(fill='both', expand=1, side=tk.BOTTOM)
+        cmd_entry.pack(fill='x', side='left' , expand=1)
+        run_btn.pack()
+
+    def on_link(self, url):
+        print(url)
+        webbrowser.open(url)
+
+    def on_demo_select(self, evt):
+        name = self.demos_lb.get( self.demos_lb.curselection()[0] )
+        fn = self.samples[name]
+        loc = {}
+        if PY3:
+            exec(open(fn).read(), loc)
+        else:
+            execfile(fn, loc)
+        descr = loc.get('__doc__', 'no-description')
+
+        self.linker.reset()
+        self.text.config(state='normal')
+        self.text.delete(1.0, tk.END)
+        self.format_text(descr)
+        self.text.config(state='disabled')
+
+        self.cmd_entry.delete(0, tk.END)
+        self.cmd_entry.insert(0, fn)
+
+    def format_text(self, s):
+        text = self.text
+        lines = s.splitlines()
+        for i, s in enumerate(lines):
+            s = s.rstrip()
+            if i == 0 and not s:
+                continue
+            if s and s == '='*len(s):
+                text.tag_add('header1', 'end-2l', 'end-1l')
+            elif s and s == '-'*len(s):
+                text.tag_add('header2', 'end-2l', 'end-1l')
+            else:
+                text.insert('end', s+'\n')
+
+        def add_link(start, end, url):
+            for tag in self.linker.add(url):
+                text.tag_add(tag, start, end)
+        self.match_text(r'http://\S+', add_link)
+
+    def match_text(self, pattern, tag_proc, regexp=True):
+        text = self.text
+        text.mark_set('matchPos', '1.0')
+        count = tk.IntVar()
+        while True:
+            match_index = text.search(pattern, 'matchPos', count=count, regexp=regexp, stopindex='end')
+            if not match_index:
+                break
+            end_index = text.index( "%s+%sc" % (match_index, count.get()) )
+            text.mark_set('matchPos', end_index)
+            if callable(tag_proc):
+                tag_proc(match_index, end_index, text.get(match_index, end_index))
+            else:
+                text.tag_add(tag_proc, match_index, end_index)
+
+    def on_run(self, *args):
+        cmd = self.cmd_entry.get()
+        print('running:', cmd)
+        Popen(sys.executable + ' ' + cmd, shell=True)
+
+    def run(self):
+        tk.mainloop()
+
+
+if __name__ == '__main__':
+    App().run()
+
+*********************
+dft.py
+*********************
+#!/usr/bin/env python
+
+'''
+sample for disctrete fourier transform (dft)
+
+USAGE:
+    dft.py <image_file>
+'''
+
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import cv2
+import numpy as np
+import sys
+
+
+def shift_dft(src, dst=None):
+    '''
+        Rearrange the quadrants of Fourier image so that the origin is at
+        the image center. Swaps quadrant 1 with 3, and 2 with 4.
+
+        src and dst arrays must be equal size & type
+    '''
+
+    if dst is None:
+        dst = np.empty(src.shape, src.dtype)
+    elif src.shape != dst.shape:
+        raise ValueError("src and dst must have equal sizes")
+    elif src.dtype != dst.dtype:
+        raise TypeError("src and dst must have equal types")
+
+    if src is dst:
+        ret = np.empty(src.shape, src.dtype)
+    else:
+        ret = dst
+
+    h, w = src.shape[:2]
+
+    cx1 = cx2 = w/2
+    cy1 = cy2 = h/2
+
+    # if the size is odd, then adjust the bottom/right quadrants
+    if w % 2 != 0:
+        cx2 += 1
+    if h % 2 != 0:
+        cy2 += 1
+
+    # swap quadrants
+
+    # swap q1 and q3
+    ret[h-cy1:, w-cx1:] = src[0:cy1 , 0:cx1 ]   # q1 -> q3
+    ret[0:cy2 , 0:cx2 ] = src[h-cy2:, w-cx2:]   # q3 -> q1
+
+    # swap q2 and q4
+    ret[0:cy2 , w-cx2:] = src[h-cy2:, 0:cx2 ]   # q2 -> q4
+    ret[h-cy1:, 0:cx1 ] = src[0:cy1 , w-cx1:]   # q4 -> q2
+
+    if src is dst:
+        dst[:,:] = ret
+
+    return dst
+
+if __name__ == "__main__":
+
+    if len(sys.argv) > 1:
+        im = cv2.imread(sys.argv[1])
+    else:
+        im = cv2.imread('../data/baboon.jpg')
+        print("usage : python dft.py <image_file>")
+
+    # convert to grayscale
+    im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    h, w = im.shape[:2]
+
+    realInput = im.astype(np.float64)
+
+    # perform an optimally sized dft
+    dft_M = cv2.getOptimalDFTSize(w)
+    dft_N = cv2.getOptimalDFTSize(h)
+
+    # copy A to dft_A and pad dft_A with zeros
+    dft_A = np.zeros((dft_N, dft_M, 2), dtype=np.float64)
+    dft_A[:h, :w, 0] = realInput
+
+    # no need to pad bottom part of dft_A with zeros because of
+    # use of nonzeroRows parameter in cv2.dft()
+    cv2.dft(dft_A, dst=dft_A, nonzeroRows=h)
+
+    cv2.imshow("win", im)
+
+    # Split fourier into real and imaginary parts
+    image_Re, image_Im = cv2.split(dft_A)
+
+    # Compute the magnitude of the spectrum Mag = sqrt(Re^2 + Im^2)
+    magnitude = cv2.sqrt(image_Re**2.0 + image_Im**2.0)
+
+    # Compute log(1 + Mag)
+    log_spectrum = cv2.log(1.0 + magnitude)
+
+    # Rearrange the quadrants of Fourier image so that the origin is at
+    # the image center
+    shift_dft(log_spectrum, log_spectrum)
+
+    # normalize and display the results as rgb
+    cv2.normalize(log_spectrum, log_spectrum, 0.0, 1.0, cv2.NORM_MINMAX)
+    cv2.imshow("magnitude", log_spectrum)
+
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+*********************
+digits_adjust.py
+*********************
+#!/usr/bin/env python
+
+'''
+Digit recognition adjustment.
+Grid search is used to find the best parameters for SVM and KNearest classifiers.
+SVM adjustment follows the guidelines given in
+http://www.csie.ntu.edu.tw/~cjlin/papers/guide/guide.pdf
+
+Usage:
+  digits_adjust.py [--model {svm|knearest}]
+
+  --model {svm|knearest}   - select the classifier (SVM is the default)
+
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    xrange = range
+
+import numpy as np
+import cv2
+from multiprocessing.pool import ThreadPool
+
+from digits import *
+
+def cross_validate(model_class, params, samples, labels, kfold = 3, pool = None):
+    n = len(samples)
+    folds = np.array_split(np.arange(n), kfold)
+    def f(i):
+        model = model_class(**params)
+        test_idx = folds[i]
+        train_idx = list(folds)
+        train_idx.pop(i)
+        train_idx = np.hstack(train_idx)
+        train_samples, train_labels = samples[train_idx], labels[train_idx]
+        test_samples, test_labels = samples[test_idx], labels[test_idx]
+        model.train(train_samples, train_labels)
+        resp = model.predict(test_samples)
+        score = (resp != test_labels).mean()
+        print(".", end='')
+        return score
+    if pool is None:
+        scores = list(map(f, xrange(kfold)))
+    else:
+        scores = pool.map(f, xrange(kfold))
+    return np.mean(scores)
+
+
+class App(object):
+    def __init__(self):
+        self._samples, self._labels = self.preprocess()
+
+    def preprocess(self):
+        digits, labels = load_digits(DIGITS_FN)
+        shuffle = np.random.permutation(len(digits))
+        digits, labels = digits[shuffle], labels[shuffle]
+        digits2 = list(map(deskew, digits))
+        samples = preprocess_hog(digits2)
+        return samples, labels
+
+    def get_dataset(self):
+        return self._samples, self._labels
+
+    def run_jobs(self, f, jobs):
+        pool = ThreadPool(processes=cv2.getNumberOfCPUs())
+        ires = pool.imap_unordered(f, jobs)
+        return ires
+
+    def adjust_SVM(self):
+        Cs = np.logspace(0, 10, 15, base=2)
+        gammas = np.logspace(-7, 4, 15, base=2)
+        scores = np.zeros((len(Cs), len(gammas)))
+        scores[:] = np.nan
+
+        print('adjusting SVM (may take a long time) ...')
+        def f(job):
+            i, j = job
+            samples, labels = self.get_dataset()
+            params = dict(C = Cs[i], gamma=gammas[j])
+            score = cross_validate(SVM, params, samples, labels)
+            return i, j, score
+
+        ires = self.run_jobs(f, np.ndindex(*scores.shape))
+        for count, (i, j, score) in enumerate(ires):
+            scores[i, j] = score
+            print('%d / %d (best error: %.2f %%, last: %.2f %%)' %
+                  (count+1, scores.size, np.nanmin(scores)*100, score*100))
+        print(scores)
+
+        print('writing score table to "svm_scores.npz"')
+        np.savez('svm_scores.npz', scores=scores, Cs=Cs, gammas=gammas)
+
+        i, j = np.unravel_index(scores.argmin(), scores.shape)
+        best_params = dict(C = Cs[i], gamma=gammas[j])
+        print('best params:', best_params)
+        print('best error: %.2f %%' % (scores.min()*100))
+        return best_params
+
+    def adjust_KNearest(self):
+        print('adjusting KNearest ...')
+        def f(k):
+            samples, labels = self.get_dataset()
+            err = cross_validate(KNearest, dict(k=k), samples, labels)
+            return k, err
+        best_err, best_k = np.inf, -1
+        for k, err in self.run_jobs(f, xrange(1, 9)):
+            if err < best_err:
+                best_err, best_k = err, k
+            print('k = %d, error: %.2f %%' % (k, err*100))
+        best_params = dict(k=best_k)
+        print('best params:', best_params, 'err: %.2f' % (best_err*100))
+        return best_params
+
+
+if __name__ == '__main__':
+    import getopt
+    import sys
+
+    print(__doc__)
+
+    args, _ = getopt.getopt(sys.argv[1:], '', ['model='])
+    args = dict(args)
+    args.setdefault('--model', 'svm')
+    args.setdefault('--env', '')
+    if args['--model'] not in ['svm', 'knearest']:
+        print('unknown model "%s"' % args['--model'])
+        sys.exit(1)
+
+    t = clock()
+    app = App()
+    if args['--model'] == 'knearest':
+        app.adjust_KNearest()
+    else:
+        app.adjust_SVM()
+    print('work time: %f s' % (clock() - t))
+
+*********************
+digits.py
+*********************
+#!/usr/bin/env python
+
+'''
+SVM and KNearest digit recognition.
+
+Sample loads a dataset of handwritten digits from '../data/digits.png'.
+Then it trains a SVM and KNearest classifiers on it and evaluates
+their accuracy.
+
+Following preprocessing is applied to the dataset:
+ - Moment-based image deskew (see deskew())
+ - Digit images are split into 4 10x10 cells and 16-bin
+   histogram of oriented gradients is computed for each
+   cell
+ - Transform histograms to space with Hellinger metric (see [1] (RootSIFT))
+
+
+[1] R. Arandjelovic, A. Zisserman
+    "Three things everyone should know to improve object retrieval"
+    http://www.robots.ox.ac.uk/~vgg/publications/2012/Arandjelovic12/arandjelovic12.pdf
+
+Usage:
+   digits.py
+'''
+
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+# built-in modules
+from multiprocessing.pool import ThreadPool
+
+import cv2
+
+import numpy as np
+from numpy.linalg import norm
+
+# local modules
+from common import clock, mosaic
+
+
+
+SZ = 20 # size of each digit is SZ x SZ
+CLASS_N = 10
+DIGITS_FN = '../data/digits.png'
+
+def split2d(img, cell_size, flatten=True):
+    h, w = img.shape[:2]
+    sx, sy = cell_size
+    cells = [np.hsplit(row, w//sx) for row in np.vsplit(img, h//sy)]
+    cells = np.array(cells)
+    if flatten:
+        cells = cells.reshape(-1, sy, sx)
+    return cells
+
+def load_digits(fn):
+    print('loading "%s" ...' % fn)
+    digits_img = cv2.imread(fn, 0)
+    digits = split2d(digits_img, (SZ, SZ))
+    labels = np.repeat(np.arange(CLASS_N), len(digits)/CLASS_N)
+    return digits, labels
+
+def deskew(img):
+    m = cv2.moments(img)
+    if abs(m['mu02']) < 1e-2:
+        return img.copy()
+    skew = m['mu11']/m['mu02']
+    M = np.float32([[1, skew, -0.5*SZ*skew], [0, 1, 0]])
+    img = cv2.warpAffine(img, M, (SZ, SZ), flags=cv2.WARP_INVERSE_MAP | cv2.INTER_LINEAR)
+    return img
+
+class StatModel(object):
+    def load(self, fn):
+        self.model.load(fn)  # Known bug: https://github.com/opencv/opencv/issues/4969
+    def save(self, fn):
+        self.model.save(fn)
+
+class KNearest(StatModel):
+    def __init__(self, k = 3):
+        self.k = k
+        self.model = cv2.ml.KNearest_create()
+
+    def train(self, samples, responses):
+        self.model.train(samples, cv2.ml.ROW_SAMPLE, responses)
+
+    def predict(self, samples):
+        retval, results, neigh_resp, dists = self.model.findNearest(samples, self.k)
+        return results.ravel()
+
+class SVM(StatModel):
+    def __init__(self, C = 1, gamma = 0.5):
+        self.model = cv2.ml.SVM_create()
+        self.model.setGamma(gamma)
+        self.model.setC(C)
+        self.model.setKernel(cv2.ml.SVM_RBF)
+        self.model.setType(cv2.ml.SVM_C_SVC)
+
+    def train(self, samples, responses):
+        self.model.train(samples, cv2.ml.ROW_SAMPLE, responses)
+
+    def predict(self, samples):
+        return self.model.predict(samples)[1].ravel()
+
+
+def evaluate_model(model, digits, samples, labels):
+    resp = model.predict(samples)
+    err = (labels != resp).mean()
+    print('error: %.2f %%' % (err*100))
+
+    confusion = np.zeros((10, 10), np.int32)
+    for i, j in zip(labels, resp):
+        confusion[i, j] += 1
+    print('confusion matrix:')
+    print(confusion)
+    print()
+
+    vis = []
+    for img, flag in zip(digits, resp == labels):
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        if not flag:
+            img[...,:2] = 0
+        vis.append(img)
+    return mosaic(25, vis)
+
+def preprocess_simple(digits):
+    return np.float32(digits).reshape(-1, SZ*SZ) / 255.0
+
+def preprocess_hog(digits):
+    samples = []
+    for img in digits:
+        gx = cv2.Sobel(img, cv2.CV_32F, 1, 0)
+        gy = cv2.Sobel(img, cv2.CV_32F, 0, 1)
+        mag, ang = cv2.cartToPolar(gx, gy)
+        bin_n = 16
+        bin = np.int32(bin_n*ang/(2*np.pi))
+        bin_cells = bin[:10,:10], bin[10:,:10], bin[:10,10:], bin[10:,10:]
+        mag_cells = mag[:10,:10], mag[10:,:10], mag[:10,10:], mag[10:,10:]
+        hists = [np.bincount(b.ravel(), m.ravel(), bin_n) for b, m in zip(bin_cells, mag_cells)]
+        hist = np.hstack(hists)
+
+        # transform to Hellinger kernel
+        eps = 1e-7
+        hist /= hist.sum() + eps
+        hist = np.sqrt(hist)
+        hist /= norm(hist) + eps
+
+        samples.append(hist)
+    return np.float32(samples)
+
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    digits, labels = load_digits(DIGITS_FN)
+
+    print('preprocessing...')
+    # shuffle digits
+    rand = np.random.RandomState(321)
+    shuffle = rand.permutation(len(digits))
+    digits, labels = digits[shuffle], labels[shuffle]
+
+    digits2 = list(map(deskew, digits))
+    samples = preprocess_hog(digits2)
+
+    train_n = int(0.9*len(samples))
+    cv2.imshow('test set', mosaic(25, digits[train_n:]))
+    digits_train, digits_test = np.split(digits2, [train_n])
+    samples_train, samples_test = np.split(samples, [train_n])
+    labels_train, labels_test = np.split(labels, [train_n])
+
+
+    print('training KNearest...')
+    model = KNearest(k=4)
+    model.train(samples_train, labels_train)
+    vis = evaluate_model(model, digits_test, samples_test, labels_test)
+    cv2.imshow('KNearest test', vis)
+
+    print('training SVM...')
+    model = SVM(C=2.67, gamma=5.383)
+    model.train(samples_train, labels_train)
+    vis = evaluate_model(model, digits_test, samples_test, labels_test)
+    cv2.imshow('SVM test', vis)
+    print('saving SVM as "digits_svm.dat"...')
+    model.save('digits_svm.dat')
+
+    cv2.waitKey(0)
+
+*********************
+digits_video.py
+*********************
+#!/usr/bin/env python
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+# built-in modules
+import os
+import sys
+
+# local modules
+import video
+from common import mosaic
+
+from digits import *
+
+def main():
+    try:
+        src = sys.argv[1]
+    except:
+        src = 0
+    cap = video.create_capture(src)
+
+    classifier_fn = 'digits_svm.dat'
+    if not os.path.exists(classifier_fn):
+        print('"%s" not found, run digits.py first' % classifier_fn)
+        return
+
+    if True:
+        model = cv2.ml.SVM_load(classifier_fn)
+    else:
+        model = cv2.ml.SVM_create()
+        model.load_(classifier_fn) #Known bug: https://github.com/opencv/opencv/issues/4969
+
+    while True:
+        ret, frame = cap.read()
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+
+        bin = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 31, 10)
+        bin = cv2.medianBlur(bin, 3)
+        _, contours, heirs = cv2.findContours( bin.copy(), cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+        try:
+            heirs = heirs[0]
+        except:
+            heirs = []
+
+        for cnt, heir in zip(contours, heirs):
+            _, _, _, outer_i = heir
+            if outer_i >= 0:
+                continue
+            x, y, w, h = cv2.boundingRect(cnt)
+            if not (16 <= h <= 64  and w <= 1.2*h):
+                continue
+            pad = max(h-w, 0)
+            x, w = x-pad/2, w+pad
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0))
+
+            bin_roi = bin[y:,x:][:h,:w]
+            gray_roi = gray[y:,x:][:h,:w]
+
+            m = bin_roi != 0
+            if not 0.1 < m.mean() < 0.4:
+                continue
+            '''
+            v_in, v_out = gray_roi[m], gray_roi[~m]
+            if v_out.std() > 10.0:
+                continue
+            s = "%f, %f" % (abs(v_in.mean() - v_out.mean()), v_out.std())
+            cv2.putText(frame, s, (x, y), cv2.FONT_HERSHEY_PLAIN, 1.0, (200, 0, 0), thickness = 1)
+            '''
+
+            s = 1.5*float(h)/SZ
+            m = cv2.moments(bin_roi)
+            c1 = np.float32([m['m10'], m['m01']]) / m['m00']
+            c0 = np.float32([SZ/2, SZ/2])
+            t = c1 - s*c0
+            A = np.zeros((2, 3), np.float32)
+            A[:,:2] = np.eye(2)*s
+            A[:,2] = t
+            bin_norm = cv2.warpAffine(bin_roi, A, (SZ, SZ), flags=cv2.WARP_INVERSE_MAP | cv2.INTER_LINEAR)
+            bin_norm = deskew(bin_norm)
+            if x+w+SZ < frame.shape[1] and y+SZ < frame.shape[0]:
+                frame[y:,x+w:][:SZ, :SZ] = bin_norm[...,np.newaxis]
+
+            sample = preprocess_hog([bin_norm])
+            digit = model.predict(sample)[0]
+            cv2.putText(frame, '%d'%digit, (x, y), cv2.FONT_HERSHEY_PLAIN, 1.0, (200, 0, 0), thickness = 1)
+
+
+        cv2.imshow('frame', frame)
+        cv2.imshow('bin', bin)
+        ch = cv2.waitKey(1)
+        if ch == 27:
+            break
+
+if __name__ == '__main__':
+    main()
+
+*********************
+distrans.py
+*********************
+#!/usr/bin/env python
+
+'''
+Distance transform sample.
+
+Usage:
+  distrans.py [<image>]
+
+Keys:
+  ESC   - exit
+  v     - toggle voronoi mode
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+from common import make_cmap
+
+if __name__ == '__main__':
+    import sys
+    try:
+        fn = sys.argv[1]
+    except:
+        fn = '../data/fruits.jpg'
+    print(__doc__)
+
+    img = cv2.imread(fn, 0)
+    if img is None:
+        print('Failed to load fn:', fn)
+        sys.exit(1)
+
+    cm = make_cmap('jet')
+    need_update = True
+    voronoi = False
+
+    def update(dummy=None):
+        global need_update
+        need_update = False
+        thrs = cv2.getTrackbarPos('threshold', 'distrans')
+        mark = cv2.Canny(img, thrs, 3*thrs)
+        dist, labels = cv2.distanceTransformWithLabels(~mark, cv2.DIST_L2, 5)
+        if voronoi:
+            vis = cm[np.uint8(labels)]
+        else:
+            vis = cm[np.uint8(dist*2)]
+        vis[mark != 0] = 255
+        cv2.imshow('distrans', vis)
+
+    def invalidate(dummy=None):
+        global need_update
+        need_update = True
+
+    cv2.namedWindow('distrans')
+    cv2.createTrackbar('threshold', 'distrans', 60, 255, invalidate)
+    update()
+
+
+    while True:
+        ch = cv2.waitKey(50)
+        if ch == 27:
+            break
+        if ch == ord('v'):
+            voronoi = not voronoi
+            print('showing', ['distance', 'voronoi'][voronoi])
+            update()
+        if need_update:
+            update()
+    cv2.destroyAllWindows()
+
+*********************
+_doc.py
+*********************
+#!/usr/bin/env python
+
+'''
+Scans current directory for *.py files and reports
+ones with missing __doc__ string.
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+from glob import glob
+
+if __name__ == '__main__':
+    print('--- undocumented files:')
+    for fn in glob('*.py'):
+        loc = {}
+        try:
+            if PY3:
+                exec(open(fn).read(), loc)
+            else:
+                execfile(fn, loc)
+        except:
+            pass
+        if '__doc__' not in loc:
+            print(fn)
+
+*********************
+edge.py
+*********************
+#!/usr/bin/env python
+
+'''
+This sample demonstrates Canny edge detection.
+
+Usage:
+  edge.py [<video source>]
+
+  Trackbars control edge thresholds.
+
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import cv2
+import numpy as np
+
+# relative module
+import video
+
+# built-in module
+import sys
+
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    try:
+        fn = sys.argv[1]
+    except:
+        fn = 0
+
+    def nothing(*arg):
+        pass
+
+    cv2.namedWindow('edge')
+    cv2.createTrackbar('thrs1', 'edge', 2000, 5000, nothing)
+    cv2.createTrackbar('thrs2', 'edge', 4000, 5000, nothing)
+
+    cap = video.create_capture(fn)
+    while True:
+        flag, img = cap.read()
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        thrs1 = cv2.getTrackbarPos('thrs1', 'edge')
+        thrs2 = cv2.getTrackbarPos('thrs2', 'edge')
+        edge = cv2.Canny(gray, thrs1, thrs2, apertureSize=5)
+        vis = img.copy()
+        vis = np.uint8(vis/2.)
+        vis[edge != 0] = (0, 255, 0)
+        cv2.imshow('edge', vis)
+        ch = cv2.waitKey(5)
+        if ch == 27:
+            break
+    cv2.destroyAllWindows()
+
+*********************
+facedetect.py
+*********************
+#!/usr/bin/env python
+
+'''
+face detection using haar cascades
+
+USAGE:
+    facedetect.py [--cascade <cascade_fn>] [--nested-cascade <cascade_fn>] [<video_source>]
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+# local modules
+from video import create_capture
+from common import clock, draw_str
+
+
+def detect(img, cascade):
+    rects = cascade.detectMultiScale(img, scaleFactor=1.3, minNeighbors=4, minSize=(30, 30),
+                                     flags=cv2.CASCADE_SCALE_IMAGE)
+    if len(rects) == 0:
+        return []
+    rects[:,2:] += rects[:,:2]
+    return rects
+
+def draw_rects(img, rects, color):
+    for x1, y1, x2, y2 in rects:
+        cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+
+if __name__ == '__main__':
+    import sys, getopt
+    print(__doc__)
+
+    args, video_src = getopt.getopt(sys.argv[1:], '', ['cascade=', 'nested-cascade='])
+    try:
+        video_src = video_src[0]
+    except:
+        video_src = 0
+    args = dict(args)
+    cascade_fn = args.get('--cascade', "../../data/haarcascades/haarcascade_frontalface_alt.xml")
+    nested_fn  = args.get('--nested-cascade', "../../data/haarcascades/haarcascade_eye.xml")
+
+    cascade = cv2.CascadeClassifier(cascade_fn)
+    nested = cv2.CascadeClassifier(nested_fn)
+
+    cam = create_capture(video_src, fallback='synth:bg=../data/lena.jpg:noise=0.05')
+
+    while True:
+        ret, img = cam.read()
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = cv2.equalizeHist(gray)
+
+        t = clock()
+        rects = detect(gray, cascade)
+        vis = img.copy()
+        draw_rects(vis, rects, (0, 255, 0))
+        if not nested.empty():
+            for x1, y1, x2, y2 in rects:
+                roi = gray[y1:y2, x1:x2]
+                vis_roi = vis[y1:y2, x1:x2]
+                subrects = detect(roi.copy(), nested)
+                draw_rects(vis_roi, subrects, (255, 0, 0))
+        dt = clock() - t
+
+        draw_str(vis, (20, 20), 'time: %.1f ms' % (dt*1000))
+        cv2.imshow('facedetect', vis)
+
+        if cv2.waitKey(5) == 27:
+            break
+    cv2.destroyAllWindows()
+
+*********************
+feature_homography.py
+*********************
+#!/usr/bin/env python
+
+'''
+Feature homography
+==================
+
+Example of using features2d framework for interactive video homography matching.
+ORB features and FLANN matcher are used. The actual tracking is implemented by
+PlaneTracker class in plane_tracker.py
+
+Inspired by http://www.youtube.com/watch?v=-ZNYoL8rzPY
+
+video: http://www.youtube.com/watch?v=FirtmYcC0Vc
+
+Usage
+-----
+feature_homography.py [<video source>]
+
+Keys:
+   SPACE  -  pause video
+
+Select a textured planar object to track by drawing a box with a mouse.
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+# local modules
+import video
+from video import presets
+import common
+from common import getsize, draw_keypoints
+from plane_tracker import PlaneTracker
+
+
+class App:
+    def __init__(self, src):
+        self.cap = video.create_capture(src, presets['book'])
+        self.frame = None
+        self.paused = False
+        self.tracker = PlaneTracker()
+
+        cv2.namedWindow('plane')
+        self.rect_sel = common.RectSelector('plane', self.on_rect)
+
+    def on_rect(self, rect):
+        self.tracker.clear()
+        self.tracker.add_target(self.frame, rect)
+
+    def run(self):
+        while True:
+            playing = not self.paused and not self.rect_sel.dragging
+            if playing or self.frame is None:
+                ret, frame = self.cap.read()
+                if not ret:
+                    break
+                self.frame = frame.copy()
+
+            w, h = getsize(self.frame)
+            vis = np.zeros((h, w*2, 3), np.uint8)
+            vis[:h,:w] = self.frame
+            if len(self.tracker.targets) > 0:
+                target = self.tracker.targets[0]
+                vis[:,w:] = target.image
+                draw_keypoints(vis[:,w:], target.keypoints)
+                x0, y0, x1, y1 = target.rect
+                cv2.rectangle(vis, (x0+w, y0), (x1+w, y1), (0, 255, 0), 2)
+
+            if playing:
+                tracked = self.tracker.track(self.frame)
+                if len(tracked) > 0:
+                    tracked = tracked[0]
+                    cv2.polylines(vis, [np.int32(tracked.quad)], True, (255, 255, 255), 2)
+                    for (x0, y0), (x1, y1) in zip(np.int32(tracked.p0), np.int32(tracked.p1)):
+                        cv2.line(vis, (x0+w, y0), (x1, y1), (0, 255, 0))
+            draw_keypoints(vis, self.tracker.frame_points)
+
+            self.rect_sel.draw(vis)
+            cv2.imshow('plane', vis)
+            ch = cv2.waitKey(1)
+            if ch == ord(' '):
+                self.paused = not self.paused
+            if ch == 27:
+                break
+
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    import sys
+    try:
+        video_src = sys.argv[1]
+    except:
+        video_src = 0
+    App(video_src).run()
+
+*********************
+find_obj.py
+*********************
+#!/usr/bin/env python
+
+'''
+Feature-based image matching sample.
+
+Note, that you will need the https://github.com/opencv/opencv_contrib repo for SIFT and SURF
+
+USAGE
+  find_obj.py [--feature=<sift|surf|orb|akaze|brisk>[-flann]] [ <image1> <image2> ]
+
+  --feature  - Feature to use. Can be sift, surf, orb or brisk. Append '-flann'
+               to feature name to use Flann-based matcher instead bruteforce.
+
+  Press left mouse button on a feature point to see its matching point.
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+from common import anorm, getsize
+
+FLANN_INDEX_KDTREE = 1  # bug: flann enums are missing
+FLANN_INDEX_LSH    = 6
+
+
+def init_feature(name):
+    chunks = name.split('-')
+    if chunks[0] == 'sift':
+        detector = cv2.xfeatures2d.SIFT_create()
+        norm = cv2.NORM_L2
+    elif chunks[0] == 'surf':
+        detector = cv2.xfeatures2d.SURF_create(800)
+        norm = cv2.NORM_L2
+    elif chunks[0] == 'orb':
+        detector = cv2.ORB_create(400)
+        norm = cv2.NORM_HAMMING
+    elif chunks[0] == 'akaze':
+        detector = cv2.AKAZE_create()
+        norm = cv2.NORM_HAMMING
+    elif chunks[0] == 'brisk':
+        detector = cv2.BRISK_create()
+        norm = cv2.NORM_HAMMING
+    else:
+        return None, None
+    if 'flann' in chunks:
+        if norm == cv2.NORM_L2:
+            flann_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+        else:
+            flann_params= dict(algorithm = FLANN_INDEX_LSH,
+                               table_number = 6, # 12
+                               key_size = 12,     # 20
+                               multi_probe_level = 1) #2
+        matcher = cv2.FlannBasedMatcher(flann_params, {})  # bug : need to pass empty dict (#1329)
+    else:
+        matcher = cv2.BFMatcher(norm)
+    return detector, matcher
+
+
+def filter_matches(kp1, kp2, matches, ratio = 0.75):
+    mkp1, mkp2 = [], []
+    for m in matches:
+        if len(m) == 2 and m[0].distance < m[1].distance * ratio:
+            m = m[0]
+            mkp1.append( kp1[m.queryIdx] )
+            mkp2.append( kp2[m.trainIdx] )
+    p1 = np.float32([kp.pt for kp in mkp1])
+    p2 = np.float32([kp.pt for kp in mkp2])
+    kp_pairs = zip(mkp1, mkp2)
+    return p1, p2, list(kp_pairs)
+
+def explore_match(win, img1, img2, kp_pairs, status = None, H = None):
+    h1, w1 = img1.shape[:2]
+    h2, w2 = img2.shape[:2]
+    vis = np.zeros((max(h1, h2), w1+w2), np.uint8)
+    vis[:h1, :w1] = img1
+    vis[:h2, w1:w1+w2] = img2
+    vis = cv2.cvtColor(vis, cv2.COLOR_GRAY2BGR)
+
+    if H is not None:
+        corners = np.float32([[0, 0], [w1, 0], [w1, h1], [0, h1]])
+        corners = np.int32( cv2.perspectiveTransform(corners.reshape(1, -1, 2), H).reshape(-1, 2) + (w1, 0) )
+        cv2.polylines(vis, [corners], True, (255, 255, 255))
+
+    if status is None:
+        status = np.ones(len(kp_pairs), np.bool_)
+    p1, p2 = [], []  # python 2 / python 3 change of zip unpacking
+    for kpp in kp_pairs:
+        p1.append(np.int32(kpp[0].pt))
+        p2.append(np.int32(np.array(kpp[1].pt) + [w1, 0]))
+
+    green = (0, 255, 0)
+    red = (0, 0, 255)
+    white = (255, 255, 255)
+    kp_color = (51, 103, 236)
+    for (x1, y1), (x2, y2), inlier in zip(p1, p2, status):
+        if inlier:
+            col = green
+            cv2.circle(vis, (x1, y1), 2, col, -1)
+            cv2.circle(vis, (x2, y2), 2, col, -1)
+        else:
+            col = red
+            r = 2
+            thickness = 3
+            cv2.line(vis, (x1-r, y1-r), (x1+r, y1+r), col, thickness)
+            cv2.line(vis, (x1-r, y1+r), (x1+r, y1-r), col, thickness)
+            cv2.line(vis, (x2-r, y2-r), (x2+r, y2+r), col, thickness)
+            cv2.line(vis, (x2-r, y2+r), (x2+r, y2-r), col, thickness)
+    vis0 = vis.copy()
+    for (x1, y1), (x2, y2), inlier in zip(p1, p2, status):
+        if inlier:
+            cv2.line(vis, (x1, y1), (x2, y2), green)
+
+    cv2.imshow(win, vis)
+
+    def onmouse(event, x, y, flags, param):
+        cur_vis = vis
+        if flags & cv2.EVENT_FLAG_LBUTTON:
+            cur_vis = vis0.copy()
+            r = 8
+            m = (anorm(np.array(p1) - (x, y)) < r) | (anorm(np.array(p2) - (x, y)) < r)
+            idxs = np.where(m)[0]
+            kp1s, kp2s = [], []
+            for i in idxs:
+                 (x1, y1), (x2, y2) = p1[i], p2[i]
+                 col = (red, green)[status[i]]
+                 cv2.line(cur_vis, (x1, y1), (x2, y2), col)
+                 kp1, kp2 = kp_pairs[i]
+                 kp1s.append(kp1)
+                 kp2s.append(kp2)
+            cur_vis = cv2.drawKeypoints(cur_vis, kp1s, None, flags=4, color=kp_color)
+            cur_vis[:,w1:] = cv2.drawKeypoints(cur_vis[:,w1:], kp2s, None, flags=4, color=kp_color)
+
+        cv2.imshow(win, cur_vis)
+    cv2.setMouseCallback(win, onmouse)
+    return vis
+
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    import sys, getopt
+    opts, args = getopt.getopt(sys.argv[1:], '', ['feature='])
+    opts = dict(opts)
+    feature_name = opts.get('--feature', 'brisk')
+    try:
+        fn1, fn2 = args
+    except:
+        fn1 = '../data/box.png'
+        fn2 = '../data/box_in_scene.png'
+
+    img1 = cv2.imread(fn1, 0)
+    img2 = cv2.imread(fn2, 0)
+    detector, matcher = init_feature(feature_name)
+
+    if img1 is None:
+        print('Failed to load fn1:', fn1)
+        sys.exit(1)
+
+    if img2 is None:
+        print('Failed to load fn2:', fn2)
+        sys.exit(1)
+
+    if detector is None:
+        print('unknown feature:', feature_name)
+        sys.exit(1)
+
+    print('using', feature_name)
+
+    kp1, desc1 = detector.detectAndCompute(img1, None)
+    kp2, desc2 = detector.detectAndCompute(img2, None)
+    print('img1 - %d features, img2 - %d features' % (len(kp1), len(kp2)))
+
+    def match_and_draw(win):
+        print('matching...')
+        raw_matches = matcher.knnMatch(desc1, trainDescriptors = desc2, k = 2) #2
+        p1, p2, kp_pairs = filter_matches(kp1, kp2, raw_matches)
+        if len(p1) >= 4:
+            H, status = cv2.findHomography(p1, p2, cv2.RANSAC, 5.0)
+            print('%d / %d  inliers/matched' % (np.sum(status), len(status)))
+        else:
+            H, status = None, None
+            print('%d matches found, not enough for homography estimation' % len(p1))
+
+        vis = explore_match(win, img1, img2, kp_pairs, status, H)
+
+    match_and_draw('find_obj')
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+
+*********************
+fitline.py
+*********************
+#!/usr/bin/env python
+
+'''
+Robust line fitting.
+==================
+
+Example of using cv2.fitLine function for fitting line
+to points in presence of outliers.
+
+Usage
+-----
+fitline.py
+
+Switch through different M-estimator functions and see,
+how well the robust functions fit the line even
+in case of ~50% of outliers.
+
+Keys
+----
+SPACE - generate random points
+f     - change distance function
+ESC   - exit
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+import numpy as np
+import cv2
+
+# built-in modules
+import itertools as it
+
+# local modules
+from common import draw_str
+
+
+w, h = 512, 256
+
+def toint(p):
+    return tuple(map(int, p))
+
+def sample_line(p1, p2, n, noise=0.0):
+    p1 = np.float32(p1)
+    t = np.random.rand(n,1)
+    return p1 + (p2-p1)*t + np.random.normal(size=(n, 2))*noise
+
+dist_func_names = it.cycle('DIST_L2 DIST_L1 DIST_L12 DIST_FAIR DIST_WELSCH DIST_HUBER'.split())
+
+if PY3:
+    cur_func_name = next(dist_func_names)
+else:
+    cur_func_name = dist_func_names.next()
+
+def update(_=None):
+    noise = cv2.getTrackbarPos('noise', 'fit line')
+    n = cv2.getTrackbarPos('point n', 'fit line')
+    r = cv2.getTrackbarPos('outlier %', 'fit line') / 100.0
+    outn = int(n*r)
+
+    p0, p1 = (90, 80), (w-90, h-80)
+    img = np.zeros((h, w, 3), np.uint8)
+    cv2.line(img, toint(p0), toint(p1), (0, 255, 0))
+
+    if n > 0:
+        line_points = sample_line(p0, p1, n-outn, noise)
+        outliers = np.random.rand(outn, 2) * (w, h)
+        points = np.vstack([line_points, outliers])
+        for p in line_points:
+            cv2.circle(img, toint(p), 2, (255, 255, 255), -1)
+        for p in outliers:
+            cv2.circle(img, toint(p), 2, (64, 64, 255), -1)
+        func = getattr(cv2, cur_func_name)
+        vx, vy, cx, cy = cv2.fitLine(np.float32(points), func, 0, 0.01, 0.01)
+        cv2.line(img, (int(cx-vx*w), int(cy-vy*w)), (int(cx+vx*w), int(cy+vy*w)), (0, 0, 255))
+
+    draw_str(img, (20, 20), cur_func_name)
+    cv2.imshow('fit line', img)
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    cv2.namedWindow('fit line')
+    cv2.createTrackbar('noise', 'fit line', 3, 50, update)
+    cv2.createTrackbar('point n', 'fit line', 100, 500, update)
+    cv2.createTrackbar('outlier %', 'fit line', 30, 100, update)
+    while True:
+        update()
+        ch = cv2.waitKey(0)
+        if ch == ord('f'):
+            if PY3:
+                cur_func_name = next(dist_func_names)
+            else:
+                cur_func_name = dist_func_names.next()
+        if ch == 27:
+            break
+
+*********************
+floodfill.py
+*********************
+#!/usr/bin/env python
+
+'''
+Floodfill sample.
+
+Usage:
+  floodfill.py [<image>]
+
+  Click on the image to set seed point
+
+Keys:
+  f     - toggle floating range
+  c     - toggle 4/8 connectivity
+  ESC   - exit
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+if __name__ == '__main__':
+    import sys
+    try:
+        fn = sys.argv[1]
+    except:
+        fn = '../data/fruits.jpg'
+    print(__doc__)
+
+    img = cv2.imread(fn, True)
+    if img is None:
+        print('Failed to load image file:', fn)
+        sys.exit(1)
+
+    h, w = img.shape[:2]
+    mask = np.zeros((h+2, w+2), np.uint8)
+    seed_pt = None
+    fixed_range = True
+    connectivity = 4
+
+    def update(dummy=None):
+        if seed_pt is None:
+            cv2.imshow('floodfill', img)
+            return
+        flooded = img.copy()
+        mask[:] = 0
+        lo = cv2.getTrackbarPos('lo', 'floodfill')
+        hi = cv2.getTrackbarPos('hi', 'floodfill')
+        flags = connectivity
+        if fixed_range:
+            flags |= cv2.FLOODFILL_FIXED_RANGE
+        cv2.floodFill(flooded, mask, seed_pt, (255, 255, 255), (lo,)*3, (hi,)*3, flags)
+        cv2.circle(flooded, seed_pt, 2, (0, 0, 255), -1)
+        cv2.imshow('floodfill', flooded)
+
+    def onmouse(event, x, y, flags, param):
+        global seed_pt
+        if flags & cv2.EVENT_FLAG_LBUTTON:
+            seed_pt = x, y
+            update()
+
+    update()
+    cv2.setMouseCallback('floodfill', onmouse)
+    cv2.createTrackbar('lo', 'floodfill', 20, 255, update)
+    cv2.createTrackbar('hi', 'floodfill', 20, 255, update)
+
+    while True:
+        ch = cv2.waitKey()
+        if ch == 27:
+            break
+        if ch == ord('f'):
+            fixed_range = not fixed_range
+            print('using %s range' % ('floating', 'fixed')[fixed_range])
+            update()
+        if ch == ord('c'):
+            connectivity = 12-connectivity
+            print('connectivity =', connectivity)
+            update()
+    cv2.destroyAllWindows()
+
+*********************
+gabor_threads.py
+*********************
+#!/usr/bin/env python
+
+'''
+gabor_threads.py
+=========
+
+Sample demonstrates:
+- use of multiple Gabor filter convolutions to get Fractalius-like image effect (http://www.redfieldplugins.com/filterFractalius.htm)
+- use of python threading to accelerate the computation
+
+Usage
+-----
+gabor_threads.py [image filename]
+
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+from multiprocessing.pool import ThreadPool
+
+
+def build_filters():
+    filters = []
+    ksize = 31
+    for theta in np.arange(0, np.pi, np.pi / 16):
+        kern = cv2.getGaborKernel((ksize, ksize), 4.0, theta, 10.0, 0.5, 0, ktype=cv2.CV_32F)
+        kern /= 1.5*kern.sum()
+        filters.append(kern)
+    return filters
+
+def process(img, filters):
+    accum = np.zeros_like(img)
+    for kern in filters:
+        fimg = cv2.filter2D(img, cv2.CV_8UC3, kern)
+        np.maximum(accum, fimg, accum)
+    return accum
+
+def process_threaded(img, filters, threadn = 8):
+    accum = np.zeros_like(img)
+    def f(kern):
+        return cv2.filter2D(img, cv2.CV_8UC3, kern)
+    pool = ThreadPool(processes=threadn)
+    for fimg in pool.imap_unordered(f, filters):
+        np.maximum(accum, fimg, accum)
+    return accum
+
+if __name__ == '__main__':
+    import sys
+    from common import Timer
+
+    print(__doc__)
+    try:
+        img_fn = sys.argv[1]
+    except:
+        img_fn = '../data/baboon.jpg'
+
+    img = cv2.imread(img_fn)
+    if img is None:
+        print('Failed to load image file:', img_fn)
+        sys.exit(1)
+
+    filters = build_filters()
+
+    with Timer('running single-threaded'):
+        res1 = process(img, filters)
+    with Timer('running multi-threaded'):
+        res2 = process_threaded(img, filters)
+
+    print('res1 == res2: ', (res1 == res2).all())
+    cv2.imshow('img', img)
+    cv2.imshow('result', res2)
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+
+*********************
+gaussian_mix.py
+*********************
+#!/usr/bin/env python
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    xrange = range
+
+import numpy as np
+from numpy import random
+import cv2
+
+def make_gaussians(cluster_n, img_size):
+    points = []
+    ref_distrs = []
+    for i in xrange(cluster_n):
+        mean = (0.1 + 0.8*random.rand(2)) * img_size
+        a = (random.rand(2, 2)-0.5)*img_size*0.1
+        cov = np.dot(a.T, a) + img_size*0.05*np.eye(2)
+        n = 100 + random.randint(900)
+        pts = random.multivariate_normal(mean, cov, n)
+        points.append( pts )
+        ref_distrs.append( (mean, cov) )
+    points = np.float32( np.vstack(points) )
+    return points, ref_distrs
+
+def draw_gaussain(img, mean, cov, color):
+    x, y = np.int32(mean)
+    w, u, vt = cv2.SVDecomp(cov)
+    ang = np.arctan2(u[1, 0], u[0, 0])*(180/np.pi)
+    s1, s2 = np.sqrt(w)*3.0
+    cv2.ellipse(img, (x, y), (s1, s2), ang, 0, 360, color, 1, cv2.LINE_AA)
+
+
+if __name__ == '__main__':
+    cluster_n = 5
+    img_size = 512
+
+    print('press any key to update distributions, ESC - exit\n')
+
+    while True:
+        print('sampling distributions...')
+        points, ref_distrs = make_gaussians(cluster_n, img_size)
+
+        print('EM (opencv) ...')
+        em = cv2.ml.EM_create()
+        em.setClustersNumber(cluster_n)
+        em.setCovarianceMatrixType(cv2.ml.EM_COV_MAT_GENERIC)
+        em.trainEM(points)
+        means = em.getMeans()
+        covs = em.getCovs()  # Known bug: https://github.com/opencv/opencv/pull/4232
+        found_distrs = zip(means, covs)
+        print('ready!\n')
+
+        img = np.zeros((img_size, img_size, 3), np.uint8)
+        for x, y in np.int32(points):
+            cv2.circle(img, (x, y), 1, (255, 255, 255), -1)
+        for m, cov in ref_distrs:
+            draw_gaussain(img, m, cov, (0, 255, 0))
+        for m, cov in found_distrs:
+            draw_gaussain(img, m, cov, (0, 0, 255))
+
+        cv2.imshow('gaussian mixture', img)
+        ch = cv2.waitKey(0)
+        if ch == 27:
+            break
+    cv2.destroyAllWindows()
+
+*********************
+grabcut.py
+*********************
+#!/usr/bin/env python
+'''
+===============================================================================
+Interactive Image Segmentation using GrabCut algorithm.
+
+This sample shows interactive image segmentation using grabcut algorithm.
+
+USAGE:
+    python grabcut.py <filename>
+
+README FIRST:
+    Two windows will show up, one for input and one for output.
+
+    At first, in input window, draw a rectangle around the object using
+mouse right button. Then press 'n' to segment the object (once or a few times)
+For any finer touch-ups, you can press any of the keys below and draw lines on
+the areas you want. Then again press 'n' for updating the output.
+
+Key '0' - To select areas of sure background
+Key '1' - To select areas of sure foreground
+Key '2' - To select areas of probable background
+Key '3' - To select areas of probable foreground
+
+Key 'n' - To update the segmentation
+Key 'r' - To reset the setup
+Key 's' - To save the results
+===============================================================================
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+import sys
+
+BLUE = [255,0,0]        # rectangle color
+RED = [0,0,255]         # PR BG
+GREEN = [0,255,0]       # PR FG
+BLACK = [0,0,0]         # sure BG
+WHITE = [255,255,255]   # sure FG
+
+DRAW_BG = {'color' : BLACK, 'val' : 0}
+DRAW_FG = {'color' : WHITE, 'val' : 1}
+DRAW_PR_FG = {'color' : GREEN, 'val' : 3}
+DRAW_PR_BG = {'color' : RED, 'val' : 2}
+
+# setting up flags
+rect = (0,0,1,1)
+drawing = False         # flag for drawing curves
+rectangle = False       # flag for drawing rect
+rect_over = False       # flag to check if rect drawn
+rect_or_mask = 100      # flag for selecting rect or mask mode
+value = DRAW_FG         # drawing initialized to FG
+thickness = 3           # brush thickness
+
+def onmouse(event,x,y,flags,param):
+    global img,img2,drawing,value,mask,rectangle,rect,rect_or_mask,ix,iy,rect_over
+
+    # Draw Rectangle
+    if event == cv2.EVENT_RBUTTONDOWN:
+        rectangle = True
+        ix,iy = x,y
+
+    elif event == cv2.EVENT_MOUSEMOVE:
+        if rectangle == True:
+            img = img2.copy()
+            cv2.rectangle(img,(ix,iy),(x,y),BLUE,2)
+            rect = (min(ix,x),min(iy,y),abs(ix-x),abs(iy-y))
+            rect_or_mask = 0
+
+    elif event == cv2.EVENT_RBUTTONUP:
+        rectangle = False
+        rect_over = True
+        cv2.rectangle(img,(ix,iy),(x,y),BLUE,2)
+        rect = (min(ix,x),min(iy,y),abs(ix-x),abs(iy-y))
+        rect_or_mask = 0
+        print(" Now press the key 'n' a few times until no further change \n")
+
+    # draw touchup curves
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+        if rect_over == False:
+            print("first draw rectangle \n")
+        else:
+            drawing = True
+            cv2.circle(img,(x,y),thickness,value['color'],-1)
+            cv2.circle(mask,(x,y),thickness,value['val'],-1)
+
+    elif event == cv2.EVENT_MOUSEMOVE:
+        if drawing == True:
+            cv2.circle(img,(x,y),thickness,value['color'],-1)
+            cv2.circle(mask,(x,y),thickness,value['val'],-1)
+
+    elif event == cv2.EVENT_LBUTTONUP:
+        if drawing == True:
+            drawing = False
+            cv2.circle(img,(x,y),thickness,value['color'],-1)
+            cv2.circle(mask,(x,y),thickness,value['val'],-1)
+
+if __name__ == '__main__':
+
+    # print documentation
+    print(__doc__)
+
+    # Loading images
+    if len(sys.argv) == 2:
+        filename = sys.argv[1] # for drawing purposes
+    else:
+        print("No input image given, so loading default image, ../data/lena.jpg \n")
+        print("Correct Usage: python grabcut.py <filename> \n")
+        filename = '../data/lena.jpg'
+
+    img = cv2.imread(filename)
+    img2 = img.copy()                               # a copy of original image
+    mask = np.zeros(img.shape[:2],dtype = np.uint8) # mask initialized to PR_BG
+    output = np.zeros(img.shape,np.uint8)           # output image to be shown
+
+    # input and output windows
+    cv2.namedWindow('output')
+    cv2.namedWindow('input')
+    cv2.setMouseCallback('input',onmouse)
+    cv2.moveWindow('input',img.shape[1]+10,90)
+
+    print(" Instructions: \n")
+    print(" Draw a rectangle around the object using right mouse button \n")
+
+    while(1):
+
+        cv2.imshow('output',output)
+        cv2.imshow('input',img)
+        k = cv2.waitKey(1)
+
+        # key bindings
+        if k == 27:         # esc to exit
+            break
+        elif k == ord('0'): # BG drawing
+            print(" mark background regions with left mouse button \n")
+            value = DRAW_BG
+        elif k == ord('1'): # FG drawing
+            print(" mark foreground regions with left mouse button \n")
+            value = DRAW_FG
+        elif k == ord('2'): # PR_BG drawing
+            value = DRAW_PR_BG
+        elif k == ord('3'): # PR_FG drawing
+            value = DRAW_PR_FG
+        elif k == ord('s'): # save image
+            bar = np.zeros((img.shape[0],5,3),np.uint8)
+            res = np.hstack((img2,bar,img,bar,output))
+            cv2.imwrite('grabcut_output.png',res)
+            print(" Result saved as image \n")
+        elif k == ord('r'): # reset everything
+            print("resetting \n")
+            rect = (0,0,1,1)
+            drawing = False
+            rectangle = False
+            rect_or_mask = 100
+            rect_over = False
+            value = DRAW_FG
+            img = img2.copy()
+            mask = np.zeros(img.shape[:2],dtype = np.uint8) # mask initialized to PR_BG
+            output = np.zeros(img.shape,np.uint8)           # output image to be shown
+        elif k == ord('n'): # segment the image
+            print(""" For finer touchups, mark foreground and background after pressing keys 0-3
+            and again press 'n' \n""")
+            if (rect_or_mask == 0):         # grabcut with rect
+                bgdmodel = np.zeros((1,65),np.float64)
+                fgdmodel = np.zeros((1,65),np.float64)
+                cv2.grabCut(img2,mask,rect,bgdmodel,fgdmodel,1,cv2.GC_INIT_WITH_RECT)
+                rect_or_mask = 1
+            elif rect_or_mask == 1:         # grabcut with mask
+                bgdmodel = np.zeros((1,65),np.float64)
+                fgdmodel = np.zeros((1,65),np.float64)
+                cv2.grabCut(img2,mask,rect,bgdmodel,fgdmodel,1,cv2.GC_INIT_WITH_MASK)
+
+        mask2 = np.where((mask==1) + (mask==3),255,0).astype('uint8')
+        output = cv2.bitwise_and(img2,img2,mask=mask2)
+
+    cv2.destroyAllWindows()
+
+*********************
+hist.py
+*********************
+#!/usr/bin/env python
+
+''' This is a sample for histogram plotting for RGB images and grayscale images for better understanding of colour distribution
+
+Benefit : Learn how to draw histogram of images
+          Get familier with cv2.calcHist, cv2.equalizeHist,cv2.normalize and some drawing functions
+
+Level : Beginner or Intermediate
+
+Functions : 1) hist_curve : returns histogram of an image drawn as curves
+            2) hist_lines : return histogram of an image drawn as bins ( only for grayscale images )
+
+Usage : python hist.py <image_file>
+
+Abid Rahman 3/14/12 debug Gary Bradski
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import cv2
+import numpy as np
+
+bins = np.arange(256).reshape(256,1)
+
+def hist_curve(im):
+    h = np.zeros((300,256,3))
+    if len(im.shape) == 2:
+        color = [(255,255,255)]
+    elif im.shape[2] == 3:
+        color = [ (255,0,0),(0,255,0),(0,0,255) ]
+    for ch, col in enumerate(color):
+        hist_item = cv2.calcHist([im],[ch],None,[256],[0,256])
+        cv2.normalize(hist_item,hist_item,0,255,cv2.NORM_MINMAX)
+        hist=np.int32(np.around(hist_item))
+        pts = np.int32(np.column_stack((bins,hist)))
+        cv2.polylines(h,[pts],False,col)
+    y=np.flipud(h)
+    return y
+
+def hist_lines(im):
+    h = np.zeros((300,256,3))
+    if len(im.shape)!=2:
+        print("hist_lines applicable only for grayscale images")
+        #print("so converting image to grayscale for representation"
+        im = cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
+    hist_item = cv2.calcHist([im],[0],None,[256],[0,256])
+    cv2.normalize(hist_item,hist_item,0,255,cv2.NORM_MINMAX)
+    hist=np.int32(np.around(hist_item))
+    for x,y in enumerate(hist):
+        cv2.line(h,(x,0),(x,y),(255,255,255))
+    y = np.flipud(h)
+    return y
+
+
+if __name__ == '__main__':
+
+    import sys
+
+    if len(sys.argv)>1:
+        fname = sys.argv[1]
+    else :
+        fname = '../data/lena.jpg'
+        print("usage : python hist.py <image_file>")
+
+    im = cv2.imread(fname)
+
+    if im is None:
+        print('Failed to load image file:', fname)
+        sys.exit(1)
+
+    gray = cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
+
+
+    print(''' Histogram plotting \n
+    Keymap :\n
+    a - show histogram for color image in curve mode \n
+    b - show histogram in bin mode \n
+    c - show equalized histogram (always in bin mode) \n
+    d - show histogram for color image in curve mode \n
+    e - show histogram for a normalized image in curve mode \n
+    Esc - exit \n
+    ''')
+
+    cv2.imshow('image',im)
+    while True:
+        k = cv2.waitKey(0)
+        if k == ord('a'):
+            curve = hist_curve(im)
+            cv2.imshow('histogram',curve)
+            cv2.imshow('image',im)
+            print('a')
+        elif k == ord('b'):
+            print('b')
+            lines = hist_lines(im)
+            cv2.imshow('histogram',lines)
+            cv2.imshow('image',gray)
+        elif k == ord('c'):
+            print('c')
+            equ = cv2.equalizeHist(gray)
+            lines = hist_lines(equ)
+            cv2.imshow('histogram',lines)
+            cv2.imshow('image',equ)
+        elif k == ord('d'):
+            print('d')
+            curve = hist_curve(gray)
+            cv2.imshow('histogram',curve)
+            cv2.imshow('image',gray)
+        elif k == ord('e'):
+            print('e')
+            norm = cv2.normalize(gray, gray, alpha = 0,beta = 255,norm_type = cv2.NORM_MINMAX)
+            lines = hist_lines(norm)
+            cv2.imshow('histogram',lines)
+            cv2.imshow('image',norm)
+        elif k == 27:
+            print('ESC')
+            cv2.destroyAllWindows()
+            break
+    cv2.destroyAllWindows()
+
+*********************
+houghcircles.py
+*********************
+#!/usr/bin/python
+
+'''
+This example illustrates how to use cv2.HoughCircles() function.
+
+Usage:
+    houghcircles.py [<image_name>]
+    image argument defaults to ../data/board.jpg
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import cv2
+import numpy as np
+import sys
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    try:
+        fn = sys.argv[1]
+    except IndexError:
+        fn = "../data/board.jpg"
+
+    src = cv2.imread(fn, 1)
+    img = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
+    img = cv2.medianBlur(img, 5)
+    cimg = src.copy() # numpy function
+
+    circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 10, np.array([]), 100, 30, 1, 30)
+
+    if circles is not None: # Check if circles have been found and only then iterate over these and add them to the image
+        a, b, c = circles.shape
+        for i in range(b):
+            cv2.circle(cimg, (circles[0][i][0], circles[0][i][1]), circles[0][i][2], (0, 0, 255), 3, cv2.LINE_AA)
+            cv2.circle(cimg, (circles[0][i][0], circles[0][i][1]), 2, (0, 255, 0), 3, cv2.LINE_AA)  # draw center of circle
+
+        cv2.imshow("detected circles", cimg)
+
+    cv2.imshow("source", src)
+    cv2.waitKey(0)
+
+*********************
+houghlines.py
+*********************
+#!/usr/bin/python
+
+'''
+This example illustrates how to use Hough Transform to find lines
+
+Usage:
+    houghlines.py [<image_name>]
+    image argument defaults to ../data/pic1.png
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import cv2
+import numpy as np
+import sys
+import math
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    try:
+        fn = sys.argv[1]
+    except IndexError:
+        fn = "../data/pic1.png"
+
+    src = cv2.imread(fn)
+    dst = cv2.Canny(src, 50, 200)
+    cdst = cv2.cvtColor(dst, cv2.COLOR_GRAY2BGR)
+
+    if True: # HoughLinesP
+        lines = cv2.HoughLinesP(dst, 1, math.pi/180.0, 40, np.array([]), 50, 10)
+        a,b,c = lines.shape
+        for i in range(a):
+            cv2.line(cdst, (lines[i][0][0], lines[i][0][1]), (lines[i][0][2], lines[i][0][3]), (0, 0, 255), 3, cv2.LINE_AA)
+
+    else:    # HoughLines
+        lines = cv2.HoughLines(dst, 1, math.pi/180.0, 50, np.array([]), 0, 0)
+        if lines is not None:
+            a,b,c = lines.shape
+            for i in range(a):
+                rho = lines[i][0][0]
+                theta = lines[i][0][1]
+                a = math.cos(theta)
+                b = math.sin(theta)
+                x0, y0 = a*rho, b*rho
+                pt1 = ( int(x0+1000*(-b)), int(y0+1000*(a)) )
+                pt2 = ( int(x0-1000*(-b)), int(y0-1000*(a)) )
+                cv2.line(cdst, pt1, pt2, (0, 0, 255), 3, cv2.LINE_AA)
+
+            cv2.imshow("detected lines", cdst)
+
+    cv2.imshow("source", src)
+    cv2.waitKey(0)
+
+*********************
+inpaint.py
+*********************
+#!/usr/bin/env python
+
+'''
+Inpainting sample.
+
+Inpainting repairs damage to images by floodfilling
+the damage with surrounding image areas.
+
+Usage:
+  inpaint.py [<image>]
+
+Keys:
+  SPACE - inpaint
+  r     - reset the inpainting mask
+  ESC   - exit
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+from common import Sketcher
+
+if __name__ == '__main__':
+    import sys
+    try:
+        fn = sys.argv[1]
+    except:
+        fn = '../data/fruits.jpg'
+
+    print(__doc__)
+
+    img = cv2.imread(fn)
+    if img is None:
+        print('Failed to load image file:', fn)
+        sys.exit(1)
+
+    img_mark = img.copy()
+    mark = np.zeros(img.shape[:2], np.uint8)
+    sketch = Sketcher('img', [img_mark, mark], lambda : ((255, 255, 255), 255))
+
+    while True:
+        ch = cv2.waitKey()
+        if ch == 27:
+            break
+        if ch == ord(' '):
+            res = cv2.inpaint(img_mark, mark, 3, cv2.INPAINT_TELEA)
+            cv2.imshow('inpaint', res)
+        if ch == ord('r'):
+            img_mark[:] = img
+            mark[:] = 0
+            sketch.show()
+    cv2.destroyAllWindows()
+
+*********************
+kalman.py
+*********************
+#!/usr/bin/env python
+"""
+   Tracking of rotating point.
+   Rotation speed is constant.
+   Both state and measurements vectors are 1D (a point angle),
+   Measurement is the real point angle + gaussian noise.
+   The real and the estimated points are connected with yellow line segment,
+   the real and the measured points are connected with red line segment.
+   (if Kalman filter works correctly,
+    the yellow segment should be shorter than the red one).
+   Pressing any key (except ESC) will reset the tracking with a different speed.
+   Pressing ESC will stop the program.
+"""
+# Python 2/3 compatibility
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    long = int
+
+import cv2
+from math import cos, sin, sqrt
+import numpy as np
+
+if __name__ == "__main__":
+
+    img_height = 500
+    img_width = 500
+    kalman = cv2.KalmanFilter(2, 1, 0)
+
+    code = long(-1)
+
+    cv2.namedWindow("Kalman")
+
+    while True:
+        state = 0.1 * np.random.randn(2, 1)
+
+        kalman.transitionMatrix = np.array([[1., 1.], [0., 1.]])
+        kalman.measurementMatrix = 1. * np.ones((1, 2))
+        kalman.processNoiseCov = 1e-5 * np.eye(2)
+        kalman.measurementNoiseCov = 1e-1 * np.ones((1, 1))
+        kalman.errorCovPost = 1. * np.ones((2, 2))
+        kalman.statePost = 0.1 * np.random.randn(2, 1)
+
+        while True:
+            def calc_point(angle):
+                return (np.around(img_width/2 + img_width/3*cos(angle), 0).astype(int),
+                        np.around(img_height/2 - img_width/3*sin(angle), 1).astype(int))
+
+            state_angle = state[0, 0]
+            state_pt = calc_point(state_angle)
+
+            prediction = kalman.predict()
+            predict_angle = prediction[0, 0]
+            predict_pt = calc_point(predict_angle)
+
+            measurement = kalman.measurementNoiseCov * np.random.randn(1, 1)
+
+            # generate measurement
+            measurement = np.dot(kalman.measurementMatrix, state) + measurement
+
+            measurement_angle = measurement[0, 0]
+            measurement_pt = calc_point(measurement_angle)
+
+            # plot points
+            def draw_cross(center, color, d):
+                cv2.line(img,
+                         (center[0] - d, center[1] - d), (center[0] + d, center[1] + d),
+                         color, 1, cv2.LINE_AA, 0)
+                cv2.line(img,
+                         (center[0] + d, center[1] - d), (center[0] - d, center[1] + d),
+                         color, 1, cv2.LINE_AA, 0)
+
+            img = np.zeros((img_height, img_width, 3), np.uint8)
+            draw_cross(np.int32(state_pt), (255, 255, 255), 3)
+            draw_cross(np.int32(measurement_pt), (0, 0, 255), 3)
+            draw_cross(np.int32(predict_pt), (0, 255, 0), 3)
+
+            cv2.line(img, state_pt, measurement_pt, (0, 0, 255), 3, cv2.LINE_AA, 0)
+            cv2.line(img, state_pt, predict_pt, (0, 255, 255), 3, cv2.LINE_AA, 0)
+
+            kalman.correct(measurement)
+
+            process_noise = sqrt(kalman.processNoiseCov[0,0]) * np.random.randn(2, 1)
+            state = np.dot(kalman.transitionMatrix, state) + process_noise
+
+            cv2.imshow("Kalman", img)
+
+            code = cv2.waitKey(100)
+            if code != -1:
+                break
+
+        if code in [27, ord('q'), ord('Q')]:
+            break
+
+    cv2.destroyWindow("Kalman")
+
+*********************
+kmeans.py
+*********************
+#!/usr/bin/env python
+
+'''
+K-means clusterization sample.
+Usage:
+   kmeans.py
+
+Keyboard shortcuts:
+   ESC   - exit
+   space - generate new distribution
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+from gaussian_mix import make_gaussians
+
+if __name__ == '__main__':
+    cluster_n = 5
+    img_size = 512
+
+    print(__doc__)
+
+    # generating bright palette
+    colors = np.zeros((1, cluster_n, 3), np.uint8)
+    colors[0,:] = 255
+    colors[0,:,0] = np.arange(0, 180, 180.0/cluster_n)
+    colors = cv2.cvtColor(colors, cv2.COLOR_HSV2BGR)[0]
+
+    while True:
+        print('sampling distributions...')
+        points, _ = make_gaussians(cluster_n, img_size)
+
+        term_crit = (cv2.TERM_CRITERIA_EPS, 30, 0.1)
+        ret, labels, centers = cv2.kmeans(points, cluster_n, None, term_crit, 10, 0)
+
+        img = np.zeros((img_size, img_size, 3), np.uint8)
+        for (x, y), label in zip(np.int32(points), labels.ravel()):
+            c = list(map(int, colors[label]))
+
+            cv2.circle(img, (x, y), 1, c, -1)
+
+        cv2.imshow('gaussian mixture', img)
+        ch = cv2.waitKey(0)
+        if ch == 27:
+            break
+    cv2.destroyAllWindows()
+
+*********************
+lappyr.py
+*********************
+#!/usr/bin/env python
+
+''' An example of Laplacian Pyramid construction and merging.
+
+Level : Intermediate
+
+Usage : python lappyr.py [<video source>]
+
+References:
+  http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.54.299
+
+Alexander Mordvintsev 6/10/12
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    xrange = range
+
+import numpy as np
+import cv2
+import video
+from common import nothing, getsize
+
+def build_lappyr(img, leveln=6, dtype=np.int16):
+    img = dtype(img)
+    levels = []
+    for i in xrange(leveln-1):
+        next_img = cv2.pyrDown(img)
+        img1 = cv2.pyrUp(next_img, dstsize=getsize(img))
+        levels.append(img-img1)
+        img = next_img
+    levels.append(img)
+    return levels
+
+def merge_lappyr(levels):
+    img = levels[-1]
+    for lev_img in levels[-2::-1]:
+        img = cv2.pyrUp(img, dstsize=getsize(lev_img))
+        img += lev_img
+    return np.uint8(np.clip(img, 0, 255))
+
+
+if __name__ == '__main__':
+    import sys
+    print(__doc__)
+
+    try:
+        fn = sys.argv[1]
+    except:
+        fn = 0
+    cap = video.create_capture(fn)
+
+    leveln = 6
+    cv2.namedWindow('level control')
+    for i in xrange(leveln):
+        cv2.createTrackbar('%d'%i, 'level control', 5, 50, nothing)
+
+    while True:
+        ret, frame = cap.read()
+
+        pyr = build_lappyr(frame, leveln)
+        for i in xrange(leveln):
+            v = int(cv2.getTrackbarPos('%d'%i, 'level control') / 5)
+            pyr[i] *= v
+        res = merge_lappyr(pyr)
+
+        cv2.imshow('laplacian pyramid filter', res)
+
+        if cv2.waitKey(1) == 27:
+            break
+
+*********************
+letter_recog.py
+*********************
+#!/usr/bin/env python
+
+'''
+The sample demonstrates how to train Random Trees classifier
+(or Boosting classifier, or MLP, or Knearest, or Support Vector Machines) using the provided dataset.
+
+We use the sample database letter-recognition.data
+from UCI Repository, here is the link:
+
+Newman, D.J. & Hettich, S. & Blake, C.L. & Merz, C.J. (1998).
+UCI Repository of machine learning databases
+[http://www.ics.uci.edu/~mlearn/MLRepository.html].
+Irvine, CA: University of California, Department of Information and Computer Science.
+
+The dataset consists of 20000 feature vectors along with the
+responses - capital latin letters A..Z.
+The first 10000 samples are used for training
+and the remaining 10000 - to test the classifier.
+======================================================
+USAGE:
+  letter_recog.py [--model <model>]
+                  [--data <data fn>]
+                  [--load <model fn>] [--save <model fn>]
+
+  Models: RTrees, KNearest, Boost, SVM, MLP
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+def load_base(fn):
+    a = np.loadtxt(fn, np.float32, delimiter=',', converters={ 0 : lambda ch : ord(ch)-ord('A') })
+    samples, responses = a[:,1:], a[:,0]
+    return samples, responses
+
+class LetterStatModel(object):
+    class_n = 26
+    train_ratio = 0.5
+
+    def load(self, fn):
+        self.model.load(fn)
+    def save(self, fn):
+        self.model.save(fn)
+
+    def unroll_samples(self, samples):
+        sample_n, var_n = samples.shape
+        new_samples = np.zeros((sample_n * self.class_n, var_n+1), np.float32)
+        new_samples[:,:-1] = np.repeat(samples, self.class_n, axis=0)
+        new_samples[:,-1] = np.tile(np.arange(self.class_n), sample_n)
+        return new_samples
+
+    def unroll_responses(self, responses):
+        sample_n = len(responses)
+        new_responses = np.zeros(sample_n*self.class_n, np.int32)
+        resp_idx = np.int32( responses + np.arange(sample_n)*self.class_n )
+        new_responses[resp_idx] = 1
+        return new_responses
+
+class RTrees(LetterStatModel):
+    def __init__(self):
+        self.model = cv2.ml.RTrees_create()
+
+    def train(self, samples, responses):
+        sample_n, var_n = samples.shape
+        self.model.setMaxDepth(20)
+        self.model.train(samples, cv2.ml.ROW_SAMPLE, responses.astype(int))
+
+    def predict(self, samples):
+        ret, resp = self.model.predict(samples)
+        return resp.ravel()
+
+
+class KNearest(LetterStatModel):
+    def __init__(self):
+        self.model = cv2.ml.KNearest_create()
+
+    def train(self, samples, responses):
+        self.model.train(samples, cv2.ml.ROW_SAMPLE, responses)
+
+    def predict(self, samples):
+        retval, results, neigh_resp, dists = self.model.findNearest(samples, k = 10)
+        return results.ravel()
+
+
+class Boost(LetterStatModel):
+    def __init__(self):
+        self.model = cv2.ml.Boost_create()
+
+    def train(self, samples, responses):
+        sample_n, var_n = samples.shape
+        new_samples = self.unroll_samples(samples)
+        new_responses = self.unroll_responses(responses)
+        var_types = np.array([cv2.ml.VAR_NUMERICAL] * var_n + [cv2.ml.VAR_CATEGORICAL, cv2.ml.VAR_CATEGORICAL], np.uint8)
+
+        self.model.setWeakCount(15)
+        self.model.setMaxDepth(10)
+        self.model.train(cv2.ml.TrainData_create(new_samples, cv2.ml.ROW_SAMPLE, new_responses.astype(int), varType = var_types))
+
+    def predict(self, samples):
+        new_samples = self.unroll_samples(samples)
+        ret, resp = self.model.predict(new_samples)
+
+        return resp.ravel().reshape(-1, self.class_n).argmax(1)
+
+
+class SVM(LetterStatModel):
+    def __init__(self):
+        self.model = cv2.ml.SVM_create()
+
+    def train(self, samples, responses):
+        self.model.setType(cv2.ml.SVM_C_SVC)
+        self.model.setC(1)
+        self.model.setKernel(cv2.ml.SVM_RBF)
+        self.model.setGamma(.1)
+        self.model.train(samples, cv2.ml.ROW_SAMPLE, responses.astype(int))
+
+    def predict(self, samples):
+        ret, resp = self.model.predict(samples)
+        return resp.ravel()
+
+
+class MLP(LetterStatModel):
+    def __init__(self):
+        self.model = cv2.ml.ANN_MLP_create()
+
+    def train(self, samples, responses):
+        sample_n, var_n = samples.shape
+        new_responses = self.unroll_responses(responses).reshape(-1, self.class_n)
+        layer_sizes = np.int32([var_n, 100, 100, self.class_n])
+
+        self.model.setLayerSizes(layer_sizes)
+        self.model.setTrainMethod(cv2.ml.ANN_MLP_BACKPROP)
+        self.model.setBackpropMomentumScale(0.0)
+        self.model.setBackpropWeightScale(0.001)
+        self.model.setTermCriteria((cv2.TERM_CRITERIA_COUNT, 20, 0.01))
+        self.model.setActivationFunction(cv2.ml.ANN_MLP_SIGMOID_SYM, 2, 1)
+
+        self.model.train(samples, cv2.ml.ROW_SAMPLE, np.float32(new_responses))
+
+    def predict(self, samples):
+        ret, resp = self.model.predict(samples)
+        return resp.argmax(-1)
+
+
+
+if __name__ == '__main__':
+    import getopt
+    import sys
+
+    print(__doc__)
+
+    models = [RTrees, KNearest, Boost, SVM, MLP] # NBayes
+    models = dict( [(cls.__name__.lower(), cls) for cls in models] )
+
+
+    args, dummy = getopt.getopt(sys.argv[1:], '', ['model=', 'data=', 'load=', 'save='])
+    args = dict(args)
+    args.setdefault('--model', 'svm')
+    args.setdefault('--data', '../data/letter-recognition.data')
+
+    print('loading data %s ...' % args['--data'])
+    samples, responses = load_base(args['--data'])
+    Model = models[args['--model']]
+    model = Model()
+
+    train_n = int(len(samples)*model.train_ratio)
+    if '--load' in args:
+        fn = args['--load']
+        print('loading model from %s ...' % fn)
+        model.load(fn)
+    else:
+        print('training %s ...' % Model.__name__)
+        model.train(samples[:train_n], responses[:train_n])
+
+    print('testing...')
+    train_rate = np.mean(model.predict(samples[:train_n]) == responses[:train_n].astype(int))
+    test_rate  = np.mean(model.predict(samples[train_n:]) == responses[train_n:].astype(int))
+
+    print('train rate: %f  test rate: %f' % (train_rate*100, test_rate*100))
+
+    if '--save' in args:
+        fn = args['--save']
+        print('saving model to %s ...' % fn)
+        model.save(fn)
+    cv2.destroyAllWindows()
+
+*********************
+lk_homography.py
+*********************
+#!/usr/bin/env python
+
+'''
+Lucas-Kanade homography tracker
+===============================
+
+Lucas-Kanade sparse optical flow demo. Uses goodFeaturesToTrack
+for track initialization and back-tracking for match verification
+between frames. Finds homography between reference and current views.
+
+Usage
+-----
+lk_homography.py [<video_source>]
+
+
+Keys
+----
+ESC   - exit
+SPACE - start tracking
+r     - toggle RANSAC
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+import video
+from common import draw_str
+from video import presets
+
+lk_params = dict( winSize  = (19, 19),
+                  maxLevel = 2,
+                  criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+
+feature_params = dict( maxCorners = 1000,
+                       qualityLevel = 0.01,
+                       minDistance = 8,
+                       blockSize = 19 )
+
+def checkedTrace(img0, img1, p0, back_threshold = 1.0):
+    p1, st, err = cv2.calcOpticalFlowPyrLK(img0, img1, p0, None, **lk_params)
+    p0r, st, err = cv2.calcOpticalFlowPyrLK(img1, img0, p1, None, **lk_params)
+    d = abs(p0-p0r).reshape(-1, 2).max(-1)
+    status = d < back_threshold
+    return p1, status
+
+green = (0, 255, 0)
+red = (0, 0, 255)
+
+class App:
+    def __init__(self, video_src):
+        self.cam = self.cam = video.create_capture(video_src, presets['book'])
+        self.p0 = None
+        self.use_ransac = True
+
+    def run(self):
+        while True:
+            ret, frame = self.cam.read()
+            frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            vis = frame.copy()
+            if self.p0 is not None:
+                p2, trace_status = checkedTrace(self.gray1, frame_gray, self.p1)
+
+                self.p1 = p2[trace_status].copy()
+                self.p0 = self.p0[trace_status].copy()
+                self.gray1 = frame_gray
+
+                if len(self.p0) < 4:
+                    self.p0 = None
+                    continue
+                H, status = cv2.findHomography(self.p0, self.p1, (0, cv2.RANSAC)[self.use_ransac], 10.0)
+                h, w = frame.shape[:2]
+                overlay = cv2.warpPerspective(self.frame0, H, (w, h))
+                vis = cv2.addWeighted(vis, 0.5, overlay, 0.5, 0.0)
+
+                for (x0, y0), (x1, y1), good in zip(self.p0[:,0], self.p1[:,0], status[:,0]):
+                    if good:
+                        cv2.line(vis, (x0, y0), (x1, y1), (0, 128, 0))
+                    cv2.circle(vis, (x1, y1), 2, (red, green)[good], -1)
+                draw_str(vis, (20, 20), 'track count: %d' % len(self.p1))
+                if self.use_ransac:
+                    draw_str(vis, (20, 40), 'RANSAC')
+            else:
+                p = cv2.goodFeaturesToTrack(frame_gray, **feature_params)
+                if p is not None:
+                    for x, y in p[:,0]:
+                        cv2.circle(vis, (x, y), 2, green, -1)
+                    draw_str(vis, (20, 20), 'feature count: %d' % len(p))
+
+            cv2.imshow('lk_homography', vis)
+
+            ch = cv2.waitKey(1)
+            if ch == 27:
+                break
+            if ch == ord(' '):
+                self.frame0 = frame.copy()
+                self.p0 = cv2.goodFeaturesToTrack(frame_gray, **feature_params)
+                if self.p0 is not None:
+                    self.p1 = self.p0
+                    self.gray0 = frame_gray
+                    self.gray1 = frame_gray
+            if ch == ord('r'):
+                self.use_ransac = not self.use_ransac
+
+
+
+def main():
+    import sys
+    try:
+        video_src = sys.argv[1]
+    except:
+        video_src = 0
+
+    print(__doc__)
+    App(video_src).run()
+    cv2.destroyAllWindows()
+
+if __name__ == '__main__':
+    main()
+
+*********************
+lk_track.py
+*********************
+#!/usr/bin/env python
+
+'''
+Lucas-Kanade tracker
+====================
+
+Lucas-Kanade sparse optical flow demo. Uses goodFeaturesToTrack
+for track initialization and back-tracking for match verification
+between frames.
+
+Usage
+-----
+lk_track.py [<video_source>]
+
+
+Keys
+----
+ESC - exit
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+import video
+from common import anorm2, draw_str
+from time import clock
+
+lk_params = dict( winSize  = (15, 15),
+                  maxLevel = 2,
+                  criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+
+feature_params = dict( maxCorners = 500,
+                       qualityLevel = 0.3,
+                       minDistance = 7,
+                       blockSize = 7 )
+
+class App:
+    def __init__(self, video_src):
+        self.track_len = 10
+        self.detect_interval = 5
+        self.tracks = []
+        self.cam = video.create_capture(video_src)
+        self.frame_idx = 0
+
+    def run(self):
+        while True:
+            ret, frame = self.cam.read()
+            frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            vis = frame.copy()
+
+            if len(self.tracks) > 0:
+                img0, img1 = self.prev_gray, frame_gray
+                p0 = np.float32([tr[-1] for tr in self.tracks]).reshape(-1, 1, 2)
+                p1, st, err = cv2.calcOpticalFlowPyrLK(img0, img1, p0, None, **lk_params)
+                p0r, st, err = cv2.calcOpticalFlowPyrLK(img1, img0, p1, None, **lk_params)
+                d = abs(p0-p0r).reshape(-1, 2).max(-1)
+                good = d < 1
+                new_tracks = []
+                for tr, (x, y), good_flag in zip(self.tracks, p1.reshape(-1, 2), good):
+                    if not good_flag:
+                        continue
+                    tr.append((x, y))
+                    if len(tr) > self.track_len:
+                        del tr[0]
+                    new_tracks.append(tr)
+                    cv2.circle(vis, (x, y), 2, (0, 255, 0), -1)
+                self.tracks = new_tracks
+                cv2.polylines(vis, [np.int32(tr) for tr in self.tracks], False, (0, 255, 0))
+                draw_str(vis, (20, 20), 'track count: %d' % len(self.tracks))
+
+            if self.frame_idx % self.detect_interval == 0:
+                mask = np.zeros_like(frame_gray)
+                mask[:] = 255
+                for x, y in [np.int32(tr[-1]) for tr in self.tracks]:
+                    cv2.circle(mask, (x, y), 5, 0, -1)
+                p = cv2.goodFeaturesToTrack(frame_gray, mask = mask, **feature_params)
+                if p is not None:
+                    for x, y in np.float32(p).reshape(-1, 2):
+                        self.tracks.append([(x, y)])
+
+
+            self.frame_idx += 1
+            self.prev_gray = frame_gray
+            cv2.imshow('lk_track', vis)
+
+            ch = cv2.waitKey(1)
+            if ch == 27:
+                break
+
+def main():
+    import sys
+    try:
+        video_src = sys.argv[1]
+    except:
+        video_src = 0
+
+    print(__doc__)
+    App(video_src).run()
+    cv2.destroyAllWindows()
+
+if __name__ == '__main__':
+    main()
+
+*********************
+logpolar.py
+*********************
+#!/usr/bin/env python
+
+'''
+plots image as logPolar and linearPolar
+
+Usage:
+    logpolar.py
+
+Keys:
+    ESC    - exit
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import cv2
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    import sys
+    try:
+        fn = sys.argv[1]
+    except IndexError:
+        fn = '../data/fruits.jpg'
+
+    img = cv2.imread(fn)
+    if img is None:
+        print('Failed to load image file:', fn)
+        sys.exit(1)
+
+    img2 = cv2.logPolar(img, (img.shape[0]/2, img.shape[1]/2), 40, cv2.WARP_FILL_OUTLIERS)
+    img3 = cv2.linearPolar(img, (img.shape[0]/2, img.shape[1]/2), 40, cv2.WARP_FILL_OUTLIERS)
+
+    cv2.imshow('before', img)
+    cv2.imshow('logpolar', img2)
+    cv2.imshow('linearpolar', img3)
+
+    cv2.waitKey(0)
+
+*********************
+morphology.py
+*********************
+#!/usr/bin/env python
+
+'''
+Morphology operations.
+
+Usage:
+  morphology.py [<image>]
+
+Keys:
+  1   - change operation
+  2   - change structure element shape
+  ESC - exit
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+import numpy as np
+import cv2
+
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    import sys
+    from itertools import cycle
+    from common import draw_str
+
+    try:
+        fn = sys.argv[1]
+    except:
+        fn = '../data/baboon.jpg'
+
+    img = cv2.imread(fn)
+
+    if img is None:
+        print('Failed to load image file:', fn)
+        sys.exit(1)
+
+    cv2.imshow('original', img)
+
+    modes = cycle(['erode/dilate', 'open/close', 'blackhat/tophat', 'gradient'])
+    str_modes = cycle(['ellipse', 'rect', 'cross'])
+
+    if PY3:
+        cur_mode = next(modes)
+        cur_str_mode = next(str_modes)
+    else:
+        cur_mode = modes.next()
+        cur_str_mode = str_modes.next()
+
+    def update(dummy=None):
+        sz = cv2.getTrackbarPos('op/size', 'morphology')
+        iters = cv2.getTrackbarPos('iters', 'morphology')
+        opers = cur_mode.split('/')
+        if len(opers) > 1:
+            sz = sz - 10
+            op = opers[sz > 0]
+            sz = abs(sz)
+        else:
+            op = opers[0]
+        sz = sz*2+1
+
+        str_name = 'MORPH_' + cur_str_mode.upper()
+        oper_name = 'MORPH_' + op.upper()
+        st = cv2.getStructuringElement(getattr(cv2, str_name), (sz, sz))
+        res = cv2.morphologyEx(img, getattr(cv2, oper_name), st, iterations=iters)
+
+        draw_str(res, (10, 20), 'mode: ' + cur_mode)
+        draw_str(res, (10, 40), 'operation: ' + oper_name)
+        draw_str(res, (10, 60), 'structure: ' + str_name)
+        draw_str(res, (10, 80), 'ksize: %d  iters: %d' % (sz, iters))
+        cv2.imshow('morphology', res)
+
+    cv2.namedWindow('morphology')
+    cv2.createTrackbar('op/size', 'morphology', 12, 20, update)
+    cv2.createTrackbar('iters', 'morphology', 1, 10, update)
+    update()
+    while True:
+        ch = cv2.waitKey()
+        if ch == 27:
+            break
+        if ch == ord('1'):
+            if PY3:
+                cur_mode = next(modes)
+            else:
+                cur_mode = modes.next()
+        if ch == ord('2'):
+            if PY3:
+                cur_str_mode = next(str_modes)
+            else:
+                cur_str_mode = str_modes.next()
+        update()
+    cv2.destroyAllWindows()
+
+*********************
+mosse.py
+*********************
+#!/usr/bin/env python
+
+'''
+MOSSE tracking sample
+
+This sample implements correlation-based tracking approach, described in [1].
+
+Usage:
+  mosse.py [--pause] [<video source>]
+
+  --pause  -  Start with playback paused at the first video frame.
+              Useful for tracking target selection.
+
+  Draw rectangles around objects with a mouse to track them.
+
+Keys:
+  SPACE    - pause video
+  c        - clear targets
+
+[1] David S. Bolme et al. "Visual Object Tracking using Adaptive Correlation Filters"
+    http://www.cs.colostate.edu/~bolme/publications/Bolme2010Tracking.pdf
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    xrange = range
+
+import numpy as np
+import cv2
+from common import draw_str, RectSelector
+import video
+
+def rnd_warp(a):
+    h, w = a.shape[:2]
+    T = np.zeros((2, 3))
+    coef = 0.2
+    ang = (np.random.rand()-0.5)*coef
+    c, s = np.cos(ang), np.sin(ang)
+    T[:2, :2] = [[c,-s], [s, c]]
+    T[:2, :2] += (np.random.rand(2, 2) - 0.5)*coef
+    c = (w/2, h/2)
+    T[:,2] = c - np.dot(T[:2, :2], c)
+    return cv2.warpAffine(a, T, (w, h), borderMode = cv2.BORDER_REFLECT)
+
+def divSpec(A, B):
+    Ar, Ai = A[...,0], A[...,1]
+    Br, Bi = B[...,0], B[...,1]
+    C = (Ar+1j*Ai)/(Br+1j*Bi)
+    C = np.dstack([np.real(C), np.imag(C)]).copy()
+    return C
+
+eps = 1e-5
+
+class MOSSE:
+    def __init__(self, frame, rect):
+        x1, y1, x2, y2 = rect
+        w, h = map(cv2.getOptimalDFTSize, [x2-x1, y2-y1])
+        x1, y1 = (x1+x2-w)//2, (y1+y2-h)//2
+        self.pos = x, y = x1+0.5*(w-1), y1+0.5*(h-1)
+        self.size = w, h
+        img = cv2.getRectSubPix(frame, (w, h), (x, y))
+
+        self.win = cv2.createHanningWindow((w, h), cv2.CV_32F)
+        g = np.zeros((h, w), np.float32)
+        g[h//2, w//2] = 1
+        g = cv2.GaussianBlur(g, (-1, -1), 2.0)
+        g /= g.max()
+
+        self.G = cv2.dft(g, flags=cv2.DFT_COMPLEX_OUTPUT)
+        self.H1 = np.zeros_like(self.G)
+        self.H2 = np.zeros_like(self.G)
+        for i in xrange(128):
+            a = self.preprocess(rnd_warp(img))
+            A = cv2.dft(a, flags=cv2.DFT_COMPLEX_OUTPUT)
+            self.H1 += cv2.mulSpectrums(self.G, A, 0, conjB=True)
+            self.H2 += cv2.mulSpectrums(     A, A, 0, conjB=True)
+        self.update_kernel()
+        self.update(frame)
+
+    def update(self, frame, rate = 0.125):
+        (x, y), (w, h) = self.pos, self.size
+        self.last_img = img = cv2.getRectSubPix(frame, (w, h), (x, y))
+        img = self.preprocess(img)
+        self.last_resp, (dx, dy), self.psr = self.correlate(img)
+        self.good = self.psr > 8.0
+        if not self.good:
+            return
+
+        self.pos = x+dx, y+dy
+        self.last_img = img = cv2.getRectSubPix(frame, (w, h), self.pos)
+        img = self.preprocess(img)
+
+        A = cv2.dft(img, flags=cv2.DFT_COMPLEX_OUTPUT)
+        H1 = cv2.mulSpectrums(self.G, A, 0, conjB=True)
+        H2 = cv2.mulSpectrums(     A, A, 0, conjB=True)
+        self.H1 = self.H1 * (1.0-rate) + H1 * rate
+        self.H2 = self.H2 * (1.0-rate) + H2 * rate
+        self.update_kernel()
+
+    @property
+    def state_vis(self):
+        f = cv2.idft(self.H, flags=cv2.DFT_SCALE | cv2.DFT_REAL_OUTPUT )
+        h, w = f.shape
+        f = np.roll(f, -h//2, 0)
+        f = np.roll(f, -w//2, 1)
+        kernel = np.uint8( (f-f.min()) / f.ptp()*255 )
+        resp = self.last_resp
+        resp = np.uint8(np.clip(resp/resp.max(), 0, 1)*255)
+        vis = np.hstack([self.last_img, kernel, resp])
+        return vis
+
+    def draw_state(self, vis):
+        (x, y), (w, h) = self.pos, self.size
+        x1, y1, x2, y2 = int(x-0.5*w), int(y-0.5*h), int(x+0.5*w), int(y+0.5*h)
+        cv2.rectangle(vis, (x1, y1), (x2, y2), (0, 0, 255))
+        if self.good:
+            cv2.circle(vis, (int(x), int(y)), 2, (0, 0, 255), -1)
+        else:
+            cv2.line(vis, (x1, y1), (x2, y2), (0, 0, 255))
+            cv2.line(vis, (x2, y1), (x1, y2), (0, 0, 255))
+        draw_str(vis, (x1, y2+16), 'PSR: %.2f' % self.psr)
+
+    def preprocess(self, img):
+        img = np.log(np.float32(img)+1.0)
+        img = (img-img.mean()) / (img.std()+eps)
+        return img*self.win
+
+    def correlate(self, img):
+        C = cv2.mulSpectrums(cv2.dft(img, flags=cv2.DFT_COMPLEX_OUTPUT), self.H, 0, conjB=True)
+        resp = cv2.idft(C, flags=cv2.DFT_SCALE | cv2.DFT_REAL_OUTPUT)
+        h, w = resp.shape
+        _, mval, _, (mx, my) = cv2.minMaxLoc(resp)
+        side_resp = resp.copy()
+        cv2.rectangle(side_resp, (mx-5, my-5), (mx+5, my+5), 0, -1)
+        smean, sstd = side_resp.mean(), side_resp.std()
+        psr = (mval-smean) / (sstd+eps)
+        return resp, (mx-w//2, my-h//2), psr
+
+    def update_kernel(self):
+        self.H = divSpec(self.H1, self.H2)
+        self.H[...,1] *= -1
+
+class App:
+    def __init__(self, video_src, paused = False):
+        self.cap = video.create_capture(video_src)
+        _, self.frame = self.cap.read()
+        cv2.imshow('frame', self.frame)
+        self.rect_sel = RectSelector('frame', self.onrect)
+        self.trackers = []
+        self.paused = paused
+
+    def onrect(self, rect):
+        frame_gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
+        tracker = MOSSE(frame_gray, rect)
+        self.trackers.append(tracker)
+
+    def run(self):
+        while True:
+            if not self.paused:
+                ret, self.frame = self.cap.read()
+                if not ret:
+                    break
+                frame_gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
+                for tracker in self.trackers:
+                    tracker.update(frame_gray)
+
+            vis = self.frame.copy()
+            for tracker in self.trackers:
+                tracker.draw_state(vis)
+            if len(self.trackers) > 0:
+                cv2.imshow('tracker state', self.trackers[-1].state_vis)
+            self.rect_sel.draw(vis)
+
+            cv2.imshow('frame', vis)
+            ch = cv2.waitKey(10)
+            if ch == 27:
+                break
+            if ch == ord(' '):
+                self.paused = not self.paused
+            if ch == ord('c'):
+                self.trackers = []
+
+
+if __name__ == '__main__':
+    print (__doc__)
+    import sys, getopt
+    opts, args = getopt.getopt(sys.argv[1:], '', ['pause'])
+    opts = dict(opts)
+    try:
+        video_src = args[0]
+    except:
+        video_src = '0'
+
+    App(video_src, paused = '--pause' in opts).run()
+
+*********************
+mouse_and_match.py
+*********************
+#!/usr/bin/env python
+'''
+mouse_and_match.py [-i path | --input path: default ../data/]
+
+Demonstrate using a mouse to interact with an image:
+ Read in the images in a directory one by one
+ Allow the user to select parts of an image with a mouse
+ When they let go of the mouse, it correlates (using matchTemplate) that patch with the image.
+
+ SPACE for next image
+ ESC to exit
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+# built-in modules
+import os
+import sys
+import glob
+import argparse
+from math import *
+
+
+drag_start = None
+sel = (0,0,0,0)
+
+def onmouse(event, x, y, flags, param):
+    global drag_start, sel
+    if event == cv2.EVENT_LBUTTONDOWN:
+        drag_start = x, y
+        sel = 0,0,0,0
+    elif event == cv2.EVENT_LBUTTONUP:
+        if sel[2] > sel[0] and sel[3] > sel[1]:
+            patch = gray[sel[1]:sel[3],sel[0]:sel[2]]
+            result = cv2.matchTemplate(gray,patch,cv2.TM_CCOEFF_NORMED)
+            result = np.abs(result)**3
+            val, result = cv2.threshold(result, 0.01, 0, cv2.THRESH_TOZERO)
+            result8 = cv2.normalize(result,None,0,255,cv2.NORM_MINMAX,cv2.CV_8U)
+            cv2.imshow("result", result8)
+        drag_start = None
+    elif drag_start:
+        #print flags
+        if flags & cv2.EVENT_FLAG_LBUTTON:
+            minpos = min(drag_start[0], x), min(drag_start[1], y)
+            maxpos = max(drag_start[0], x), max(drag_start[1], y)
+            sel = minpos[0], minpos[1], maxpos[0], maxpos[1]
+            img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+            cv2.rectangle(img, (sel[0], sel[1]), (sel[2], sel[3]), (0,255,255), 1)
+            cv2.imshow("gray", img)
+        else:
+            print("selection is complete")
+            drag_start = None
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    parser = argparse.ArgumentParser(description='Demonstrate mouse interaction with images')
+    parser.add_argument("-i","--input", default='../data/', help="Input directory.")
+    args = parser.parse_args()
+    path = args.input
+
+    cv2.namedWindow("gray",1)
+    cv2.setMouseCallback("gray", onmouse)
+    '''Loop through all the images in the directory'''
+    for infile in glob.glob( os.path.join(path, '*.*') ):
+        ext = os.path.splitext(infile)[1][1:] #get the filename extenstion
+        if ext == "png" or ext == "jpg" or ext == "bmp" or ext == "tiff" or ext == "pbm":
+            print(infile)
+
+            img=cv2.imread(infile,1)
+            if img is None:
+                continue
+            sel = (0,0,0,0)
+            drag_start = None
+            gray=cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            cv2.imshow("gray",gray)
+            if cv2.waitKey() == 27:
+                break
+    cv2.destroyAllWindows()
+
+*********************
+mser.py
+*********************
+#!/usr/bin/env python
+
+'''
+MSER detector demo
+==================
+
+Usage:
+------
+    mser.py [<video source>]
+
+Keys:
+-----
+    ESC   - exit
+
+'''
+
+import numpy as np
+import cv2
+import video
+import sys
+
+if __name__ == '__main__':
+    try:
+        video_src = sys.argv[1]
+    except:
+        video_src = 0
+
+    cam = video.create_capture(video_src)
+    mser = cv2.MSER_create()
+
+    while True:
+        ret, img = cam.read()
+        if ret == 0:
+            break
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        vis = img.copy()
+
+        regions, _ = mser.detectRegions(gray)
+        hulls = [cv2.convexHull(p.reshape(-1, 1, 2)) for p in regions]
+        cv2.polylines(vis, hulls, 1, (0, 255, 0))
+
+        cv2.imshow('img', vis)
+        if cv2.waitKey(5) == 27:
+            break
+    cv2.destroyAllWindows()
+
+*********************
+opencv_version.py
+*********************
+#!/usr/bin/env python
+
+'''
+prints OpenCV version
+
+Usage:
+    opencv_version.py [<params>]
+    params:
+        --build: print complete build info
+        --help:  print this help
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import cv2
+
+if __name__ == '__main__':
+    import sys
+    print(__doc__)
+
+    try:
+        param = sys.argv[1]
+    except IndexError:
+        param = ""
+
+    if "--build" == param:
+        print(cv2.getBuildInformation())
+    elif "--help" == param:
+        print("\t--build\n\t\tprint complete build info")
+        print("\t--help\n\t\tprint this help")
+    else:
+        print("Welcome to OpenCV")
+
+*********************
+opt_flow.py
+*********************
+#!/usr/bin/env python
+
+'''
+example to show optical flow
+
+USAGE: opt_flow.py [<video_source>]
+
+Keys:
+ 1 - toggle HSV flow visualization
+ 2 - toggle glitch
+
+Keys:
+    ESC    - exit
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+import video
+
+
+def draw_flow(img, flow, step=16):
+    h, w = img.shape[:2]
+    y, x = np.mgrid[step/2:h:step, step/2:w:step].reshape(2,-1).astype(int)
+    fx, fy = flow[y,x].T
+    lines = np.vstack([x, y, x+fx, y+fy]).T.reshape(-1, 2, 2)
+    lines = np.int32(lines + 0.5)
+    vis = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    cv2.polylines(vis, lines, 0, (0, 255, 0))
+    for (x1, y1), (x2, y2) in lines:
+        cv2.circle(vis, (x1, y1), 1, (0, 255, 0), -1)
+    return vis
+
+
+def draw_hsv(flow):
+    h, w = flow.shape[:2]
+    fx, fy = flow[:,:,0], flow[:,:,1]
+    ang = np.arctan2(fy, fx) + np.pi
+    v = np.sqrt(fx*fx+fy*fy)
+    hsv = np.zeros((h, w, 3), np.uint8)
+    hsv[...,0] = ang*(180/np.pi/2)
+    hsv[...,1] = 255
+    hsv[...,2] = np.minimum(v*4, 255)
+    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    return bgr
+
+
+def warp_flow(img, flow):
+    h, w = flow.shape[:2]
+    flow = -flow
+    flow[:,:,0] += np.arange(w)
+    flow[:,:,1] += np.arange(h)[:,np.newaxis]
+    res = cv2.remap(img, flow, None, cv2.INTER_LINEAR)
+    return res
+
+if __name__ == '__main__':
+    import sys
+    print(__doc__)
+    try:
+        fn = sys.argv[1]
+    except IndexError:
+        fn = 0
+
+    cam = video.create_capture(fn)
+    ret, prev = cam.read()
+    prevgray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
+    show_hsv = False
+    show_glitch = False
+    cur_glitch = prev.copy()
+
+    while True:
+        ret, img = cam.read()
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        flow = cv2.calcOpticalFlowFarneback(prevgray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+        prevgray = gray
+
+        cv2.imshow('flow', draw_flow(gray, flow))
+        if show_hsv:
+            cv2.imshow('flow HSV', draw_hsv(flow))
+        if show_glitch:
+            cur_glitch = warp_flow(cur_glitch, flow)
+            cv2.imshow('glitch', cur_glitch)
+
+        ch = cv2.waitKey(5)
+        if ch == 27:
+            break
+        if ch == ord('1'):
+            show_hsv = not show_hsv
+            print('HSV flow visualization is', ['off', 'on'][show_hsv])
+        if ch == ord('2'):
+            show_glitch = not show_glitch
+            if show_glitch:
+                cur_glitch = img.copy()
+            print('glitch is', ['off', 'on'][show_glitch])
+    cv2.destroyAllWindows()
+
+*********************
+peopledetect.py
+*********************
+#!/usr/bin/env python
+
+'''
+example to detect upright people in images using HOG features
+
+Usage:
+    peopledetect.py <image_names>
+
+Press any key to continue, ESC to stop.
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+
+def inside(r, q):
+    rx, ry, rw, rh = r
+    qx, qy, qw, qh = q
+    return rx > qx and ry > qy and rx + rw < qx + qw and ry + rh < qy + qh
+
+
+def draw_detections(img, rects, thickness = 1):
+    for x, y, w, h in rects:
+        # the HOG detector returns slightly larger rectangles than the real objects.
+        # so we slightly shrink the rectangles to get a nicer output.
+        pad_w, pad_h = int(0.15*w), int(0.05*h)
+        cv2.rectangle(img, (x+pad_w, y+pad_h), (x+w-pad_w, y+h-pad_h), (0, 255, 0), thickness)
+
+
+if __name__ == '__main__':
+    import sys
+    from glob import glob
+    import itertools as it
+
+    print(__doc__)
+
+    hog = cv2.HOGDescriptor()
+    hog.setSVMDetector( cv2.HOGDescriptor_getDefaultPeopleDetector() )
+
+    default = ['../data/basketball2.png '] if len(sys.argv[1:]) == 0 else []
+
+    for fn in it.chain(*map(glob, default + sys.argv[1:])):
+        print(fn, ' - ',)
+        try:
+            img = cv2.imread(fn)
+            if img is None:
+                print('Failed to load image file:', fn)
+                continue
+        except:
+            print('loading error')
+            continue
+
+        found, w = hog.detectMultiScale(img, winStride=(8,8), padding=(32,32), scale=1.05)
+        found_filtered = []
+        for ri, r in enumerate(found):
+            for qi, q in enumerate(found):
+                if ri != qi and inside(r, q):
+                    break
+            else:
+                found_filtered.append(r)
+        draw_detections(img, found)
+        draw_detections(img, found_filtered, 3)
+        print('%d (%d) found' % (len(found_filtered), len(found)))
+        cv2.imshow('img', img)
+        ch = cv2.waitKey()
+        if ch == 27:
+            break
+    cv2.destroyAllWindows()
+
+*********************
+plane_ar.py
+*********************
+#!/usr/bin/env python
+
+'''
+Planar augmented reality
+==================
+
+This sample shows an example of augmented reality overlay over a planar object
+tracked by PlaneTracker from plane_tracker.py. solvePnP funciton is used to
+estimate the tracked object location in 3d space.
+
+video: http://www.youtube.com/watch?v=pzVbhxx6aog
+
+Usage
+-----
+plane_ar.py [<video source>]
+
+Keys:
+   SPACE  -  pause video
+   c      -  clear targets
+
+Select a textured planar object to track by drawing a box with a mouse.
+Use 'focal' slider to adjust to camera focal length for proper video augmentation.
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+import video
+import common
+from plane_tracker import PlaneTracker
+from video import presets
+
+# Simple model of a house - cube with a triangular prism "roof"
+ar_verts = np.float32([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0],
+                       [0, 0, 1], [0, 1, 1], [1, 1, 1], [1, 0, 1],
+                       [0, 0.5, 2], [1, 0.5, 2]])
+ar_edges = [(0, 1), (1, 2), (2, 3), (3, 0),
+            (4, 5), (5, 6), (6, 7), (7, 4),
+            (0, 4), (1, 5), (2, 6), (3, 7),
+            (4, 8), (5, 8), (6, 9), (7, 9), (8, 9)]
+
+class App:
+    def __init__(self, src):
+        self.cap = video.create_capture(src, presets['book'])
+        self.frame = None
+        self.paused = False
+        self.tracker = PlaneTracker()
+
+        cv2.namedWindow('plane')
+        cv2.createTrackbar('focal', 'plane', 25, 50, common.nothing)
+        self.rect_sel = common.RectSelector('plane', self.on_rect)
+
+    def on_rect(self, rect):
+        self.tracker.add_target(self.frame, rect)
+
+    def run(self):
+        while True:
+            playing = not self.paused and not self.rect_sel.dragging
+            if playing or self.frame is None:
+                ret, frame = self.cap.read()
+                if not ret:
+                    break
+                self.frame = frame.copy()
+
+            vis = self.frame.copy()
+            if playing:
+                tracked = self.tracker.track(self.frame)
+                for tr in tracked:
+                    cv2.polylines(vis, [np.int32(tr.quad)], True, (255, 255, 255), 2)
+                    for (x, y) in np.int32(tr.p1):
+                        cv2.circle(vis, (x, y), 2, (255, 255, 255))
+                    self.draw_overlay(vis, tr)
+
+            self.rect_sel.draw(vis)
+            cv2.imshow('plane', vis)
+            ch = cv2.waitKey(1)
+            if ch == ord(' '):
+                self.paused = not self.paused
+            if ch == ord('c'):
+                self.tracker.clear()
+            if ch == 27:
+                break
+
+    def draw_overlay(self, vis, tracked):
+        x0, y0, x1, y1 = tracked.target.rect
+        quad_3d = np.float32([[x0, y0, 0], [x1, y0, 0], [x1, y1, 0], [x0, y1, 0]])
+        fx = 0.5 + cv2.getTrackbarPos('focal', 'plane') / 50.0
+        h, w = vis.shape[:2]
+        K = np.float64([[fx*w, 0, 0.5*(w-1)],
+                        [0, fx*w, 0.5*(h-1)],
+                        [0.0,0.0,      1.0]])
+        dist_coef = np.zeros(4)
+        ret, rvec, tvec = cv2.solvePnP(quad_3d, tracked.quad, K, dist_coef)
+        verts = ar_verts * [(x1-x0), (y1-y0), -(x1-x0)*0.3] + (x0, y0, 0)
+        verts = cv2.projectPoints(verts, rvec, tvec, K, dist_coef)[0].reshape(-1, 2)
+        for i, j in ar_edges:
+            (x0, y0), (x1, y1) = verts[i], verts[j]
+            cv2.line(vis, (int(x0), int(y0)), (int(x1), int(y1)), (255, 255, 0), 2)
+
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    import sys
+    try:
+        video_src = sys.argv[1]
+    except:
+        video_src = 0
+    App(video_src).run()
+
+*********************
+plane_tracker.py
+*********************
+#!/usr/bin/env python
+
+'''
+Multitarget planar tracking
+==================
+
+Example of using features2d framework for interactive video homography matching.
+ORB features and FLANN matcher are used. This sample provides PlaneTracker class
+and an example of its usage.
+
+video: http://www.youtube.com/watch?v=pzVbhxx6aog
+
+Usage
+-----
+plane_tracker.py [<video source>]
+
+Keys:
+   SPACE  -  pause video
+   c      -  clear targets
+
+Select a textured planar object to track by drawing a box with a mouse.
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    xrange = range
+
+import numpy as np
+import cv2
+
+# built-in modules
+from collections import namedtuple
+
+# local modules
+import video
+import common
+from video import presets
+
+
+FLANN_INDEX_KDTREE = 1
+FLANN_INDEX_LSH    = 6
+flann_params= dict(algorithm = FLANN_INDEX_LSH,
+                   table_number = 6, # 12
+                   key_size = 12,     # 20
+                   multi_probe_level = 1) #2
+
+MIN_MATCH_COUNT = 10
+
+'''
+  image     - image to track
+  rect      - tracked rectangle (x1, y1, x2, y2)
+  keypoints - keypoints detected inside rect
+  descrs    - their descriptors
+  data      - some user-provided data
+'''
+PlanarTarget = namedtuple('PlaneTarget', 'image, rect, keypoints, descrs, data')
+
+'''
+  target - reference to PlanarTarget
+  p0     - matched points coords in target image
+  p1     - matched points coords in input frame
+  H      - homography matrix from p0 to p1
+  quad   - target bounary quad in input frame
+'''
+TrackedTarget = namedtuple('TrackedTarget', 'target, p0, p1, H, quad')
+
+class PlaneTracker:
+    def __init__(self):
+        self.detector = cv2.ORB_create( nfeatures = 1000 )
+        self.matcher = cv2.FlannBasedMatcher(flann_params, {})  # bug : need to pass empty dict (#1329)
+        self.targets = []
+        self.frame_points = []
+
+    def add_target(self, image, rect, data=None):
+        '''Add a new tracking target.'''
+        x0, y0, x1, y1 = rect
+        raw_points, raw_descrs = self.detect_features(image)
+        points, descs = [], []
+        for kp, desc in zip(raw_points, raw_descrs):
+            x, y = kp.pt
+            if x0 <= x <= x1 and y0 <= y <= y1:
+                points.append(kp)
+                descs.append(desc)
+        descs = np.uint8(descs)
+        self.matcher.add([descs])
+        target = PlanarTarget(image = image, rect=rect, keypoints = points, descrs=descs, data=data)
+        self.targets.append(target)
+
+    def clear(self):
+        '''Remove all targets'''
+        self.targets = []
+        self.matcher.clear()
+
+    def track(self, frame):
+        '''Returns a list of detected TrackedTarget objects'''
+        self.frame_points, frame_descrs = self.detect_features(frame)
+        if len(self.frame_points) < MIN_MATCH_COUNT:
+            return []
+        matches = self.matcher.knnMatch(frame_descrs, k = 2)
+        matches = [m[0] for m in matches if len(m) == 2 and m[0].distance < m[1].distance * 0.75]
+        if len(matches) < MIN_MATCH_COUNT:
+            return []
+        matches_by_id = [[] for _ in xrange(len(self.targets))]
+        for m in matches:
+            matches_by_id[m.imgIdx].append(m)
+        tracked = []
+        for imgIdx, matches in enumerate(matches_by_id):
+            if len(matches) < MIN_MATCH_COUNT:
+                continue
+            target = self.targets[imgIdx]
+            p0 = [target.keypoints[m.trainIdx].pt for m in matches]
+            p1 = [self.frame_points[m.queryIdx].pt for m in matches]
+            p0, p1 = np.float32((p0, p1))
+            H, status = cv2.findHomography(p0, p1, cv2.RANSAC, 3.0)
+            status = status.ravel() != 0
+            if status.sum() < MIN_MATCH_COUNT:
+                continue
+            p0, p1 = p0[status], p1[status]
+
+            x0, y0, x1, y1 = target.rect
+            quad = np.float32([[x0, y0], [x1, y0], [x1, y1], [x0, y1]])
+            quad = cv2.perspectiveTransform(quad.reshape(1, -1, 2), H).reshape(-1, 2)
+
+            track = TrackedTarget(target=target, p0=p0, p1=p1, H=H, quad=quad)
+            tracked.append(track)
+        tracked.sort(key = lambda t: len(t.p0), reverse=True)
+        return tracked
+
+    def detect_features(self, frame):
+        '''detect_features(self, frame) -> keypoints, descrs'''
+        keypoints, descrs = self.detector.detectAndCompute(frame, None)
+        if descrs is None:  # detectAndCompute returns descs=None if not keypoints found
+            descrs = []
+        return keypoints, descrs
+
+
+class App:
+    def __init__(self, src):
+        self.cap = video.create_capture(src, presets['book'])
+        self.frame = None
+        self.paused = False
+        self.tracker = PlaneTracker()
+
+        cv2.namedWindow('plane')
+        self.rect_sel = common.RectSelector('plane', self.on_rect)
+
+    def on_rect(self, rect):
+        self.tracker.add_target(self.frame, rect)
+
+    def run(self):
+        while True:
+            playing = not self.paused and not self.rect_sel.dragging
+            if playing or self.frame is None:
+                ret, frame = self.cap.read()
+                if not ret:
+                    break
+                self.frame = frame.copy()
+
+            vis = self.frame.copy()
+            if playing:
+                tracked = self.tracker.track(self.frame)
+                for tr in tracked:
+                    cv2.polylines(vis, [np.int32(tr.quad)], True, (255, 255, 255), 2)
+                    for (x, y) in np.int32(tr.p1):
+                        cv2.circle(vis, (x, y), 2, (255, 255, 255))
+
+            self.rect_sel.draw(vis)
+            cv2.imshow('plane', vis)
+            ch = cv2.waitKey(1)
+            if ch == ord(' '):
+                self.paused = not self.paused
+            if ch == ord('c'):
+                self.tracker.clear()
+            if ch == 27:
+                break
+
+if __name__ == '__main__':
+    print(__doc__)
+
+    import sys
+    try:
+        video_src = sys.argv[1]
+    except:
+        video_src = 0
+    App(video_src).run()
+
+*********************
+squares.py
+*********************
+#!/usr/bin/env python
+
+'''
+Simple "Square Detector" program.
+
+Loads several images sequentially and tries to find squares in each image.
+'''
+
+# Python 2/3 compatibility
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    xrange = range
+
+import numpy as np
+import cv2
+
+
+def angle_cos(p0, p1, p2):
+    d1, d2 = (p0-p1).astype('float'), (p2-p1).astype('float')
+    return abs( np.dot(d1, d2) / np.sqrt( np.dot(d1, d1)*np.dot(d2, d2) ) )
+
+def find_squares(img):
+    img = cv2.GaussianBlur(img, (5, 5), 0)
+    squares = []
+    for gray in cv2.split(img):
+        for thrs in xrange(0, 255, 26):
+            if thrs == 0:
+                bin = cv2.Canny(gray, 0, 50, apertureSize=5)
+                bin = cv2.dilate(bin, None)
+            else:
+                retval, bin = cv2.threshold(gray, thrs, 255, cv2.THRESH_BINARY)
+            bin, contours, hierarchy = cv2.findContours(bin, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+            for cnt in contours:
+                cnt_len = cv2.arcLength(cnt, True)
+                cnt = cv2.approxPolyDP(cnt, 0.02*cnt_len, True)
+                if len(cnt) == 4 and cv2.contourArea(cnt) > 1000 and cv2.isContourConvex(cnt):
+                    cnt = cnt.reshape(-1, 2)
+                    max_cos = np.max([angle_cos( cnt[i], cnt[(i+1) % 4], cnt[(i+2) % 4] ) for i in xrange(4)])
+                    if max_cos < 0.1:
+                        squares.append(cnt)
+    return squares
+
+if __name__ == '__main__':
+    from glob import glob
+    for fn in glob('../data/pic*.png'):
+        img = cv2.imread(fn)
+        squares = find_squares(img)
+        cv2.drawContours( img, squares, -1, (0, 255, 0), 3 )
+        cv2.imshow('squares', img)
+        ch = cv2.waitKey()
+        if ch == 27:
+            break
+    cv2.destroyAllWindows()
+
+*********************
+stereo_match.py
+*********************
+#!/usr/bin/env python
+
+'''
+Simple example of stereo image matching and point cloud generation.
+
+Resulting .ply file cam be easily viewed using MeshLab ( http://meshlab.sourceforge.net/ )
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+ply_header = '''ply
+format ascii 1.0
+element vertex %(vert_num)d
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+end_header
+'''
+
+def write_ply(fn, verts, colors):
+    verts = verts.reshape(-1, 3)
+    colors = colors.reshape(-1, 3)
+    verts = np.hstack([verts, colors])
+    with open(fn, 'wb') as f:
+        f.write((ply_header % dict(vert_num=len(verts))).encode('utf-8'))
+        np.savetxt(f, verts, fmt='%f %f %f %d %d %d ')
+
+
+if __name__ == '__main__':
+    print('loading images...')
+    imgL = cv2.pyrDown( cv2.imread('../data/aloeL.jpg') )  # downscale images for faster processing
+    imgR = cv2.pyrDown( cv2.imread('../data/aloeR.jpg') )
+
+    # disparity range is tuned for 'aloe' image pair
+    window_size = 3
+    min_disp = 16
+    num_disp = 112-min_disp
+    stereo = cv2.StereoSGBM_create(minDisparity = min_disp,
+        numDisparities = num_disp,
+        blockSize = 16,
+        P1 = 8*3*window_size**2,
+        P2 = 32*3*window_size**2,
+        disp12MaxDiff = 1,
+        uniquenessRatio = 10,
+        speckleWindowSize = 100,
+        speckleRange = 32
+    )
+
+    print('computing disparity...')
+    disp = stereo.compute(imgL, imgR).astype(np.float32) / 16.0
+
+    print('generating 3d point cloud...',)
+    h, w = imgL.shape[:2]
+    f = 0.8*w                          # guess for focal length
+    Q = np.float32([[1, 0, 0, -0.5*w],
+                    [0,-1, 0,  0.5*h], # turn points 180 deg around x-axis,
+                    [0, 0, 0,     -f], # so that y-axis looks up
+                    [0, 0, 1,      0]])
+    points = cv2.reprojectImageTo3D(disp, Q)
+    colors = cv2.cvtColor(imgL, cv2.COLOR_BGR2RGB)
+    mask = disp > disp.min()
+    out_points = points[mask]
+    out_colors = colors[mask]
+    out_fn = 'out.ply'
+    write_ply('out.ply', out_points, out_colors)
+    print('%s saved' % 'out.ply')
+
+    cv2.imshow('left', imgL)
+    cv2.imshow('disparity', (disp-min_disp)/num_disp)
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+
+*********************
+texture_flow.py
+*********************
+#!/usr/bin/env python
+
+'''
+Texture flow direction estimation.
+
+Sample shows how cv2.cornerEigenValsAndVecs function can be used
+to estimate image texture flow direction.
+
+Usage:
+    texture_flow.py [<image>]
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+if __name__ == '__main__':
+    import sys
+    try:
+        fn = sys.argv[1]
+    except:
+        fn = '../data/starry_night.jpg'
+
+    img = cv2.imread(fn)
+    if img is None:
+        print('Failed to load image file:', fn)
+        sys.exit(1)
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    h, w = img.shape[:2]
+
+    eigen = cv2.cornerEigenValsAndVecs(gray, 15, 3)
+    eigen = eigen.reshape(h, w, 3, 2)  # [[e1, e2], v1, v2]
+    flow = eigen[:,:,2]
+
+    vis = img.copy()
+    vis[:] = (192 + np.uint32(vis)) / 2
+    d = 12
+    points =  np.dstack( np.mgrid[d/2:w:d, d/2:h:d] ).reshape(-1, 2)
+    for x, y in np.int32(points):
+       vx, vy = np.int32(flow[y, x]*d)
+       cv2.line(vis, (x-vx, y-vy), (x+vx, y+vy), (0, 0, 0), 1, cv2.LINE_AA)
+    cv2.imshow('input', img)
+    cv2.imshow('flow', vis)
+    cv2.waitKey()
+
+*********************
+tst_scene_render.py
+*********************
+#!/usr/bin/env python
+
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+from numpy import pi, sin, cos
+
+import cv2
+
+defaultSize = 512
+
+class TestSceneRender():
+
+    def __init__(self, bgImg = None, fgImg = None,
+        deformation = False, speed = 0.25, **params):
+        self.time = 0.0
+        self.timeStep = 1.0 / 30.0
+        self.foreground = fgImg
+        self.deformation = deformation
+        self.speed = speed
+
+        if bgImg is not None:
+            self.sceneBg = bgImg.copy()
+        else:
+            self.sceneBg = np.zeros(defaultSize, defaultSize, np.uint8)
+
+        self.w = self.sceneBg.shape[0]
+        self.h = self.sceneBg.shape[1]
+
+        if fgImg is not None:
+            self.foreground = fgImg.copy()
+            self.center = self.currentCenter = (int(self.w/2 - fgImg.shape[0]/2), int(self.h/2 - fgImg.shape[1]/2))
+
+            self.xAmpl = self.sceneBg.shape[0] - (self.center[0] + fgImg.shape[0])
+            self.yAmpl = self.sceneBg.shape[1] - (self.center[1] + fgImg.shape[1])
+
+        self.initialRect = np.array([ (self.h/2, self.w/2), (self.h/2, self.w/2 + self.w/10),
+         (self.h/2 + self.h/10, self.w/2 + self.w/10), (self.h/2 + self.h/10, self.w/2)]).astype(int)
+        self.currentRect = self.initialRect
+
+    def getXOffset(self, time):
+        return int( self.xAmpl*cos(time*self.speed))
+
+
+    def getYOffset(self, time):
+        return int(self.yAmpl*sin(time*self.speed))
+
+    def setInitialRect(self, rect):
+        self.initialRect = rect
+
+    def getRectInTime(self, time):
+
+        if self.foreground is not None:
+            tmp = np.array(self.center) + np.array((self.getXOffset(time), self.getYOffset(time)))
+            x0, y0 = tmp
+            x1, y1 = tmp + self.foreground.shape[0:2]
+            return np.array([y0, x0, y1, x1])
+        else:
+            x0, y0 = self.initialRect[0] + np.array((self.getXOffset(time), self.getYOffset(time)))
+            x1, y1 = self.initialRect[2] + np.array((self.getXOffset(time), self.getYOffset(time)))
+            return np.array([y0, x0, y1, x1])
+
+    def getCurrentRect(self):
+
+        if self.foreground is not None:
+
+            x0 = self.currentCenter[0]
+            y0 = self.currentCenter[1]
+            x1 = self.currentCenter[0] + self.foreground.shape[0]
+            y1 = self.currentCenter[1] + self.foreground.shape[1]
+            return np.array([y0, x0, y1, x1])
+        else:
+            x0, y0 = self.currentRect[0]
+            x1, y1 = self.currentRect[2]
+            return np.array([x0, y0, x1, y1])
+
+    def getNextFrame(self):
+        img = self.sceneBg.copy()
+
+        if self.foreground is not None:
+            self.currentCenter = (self.center[0] + self.getXOffset(self.time), self.center[1] + self.getYOffset(self.time))
+            img[self.currentCenter[0]:self.currentCenter[0]+self.foreground.shape[0],
+             self.currentCenter[1]:self.currentCenter[1]+self.foreground.shape[1]] = self.foreground
+        else:
+            self.currentRect = self.initialRect + np.int( 30*cos(self.time*self.speed) + 50*sin(self.time*self.speed))
+            if self.deformation:
+                self.currentRect[1:3] += self.h/20*cos(self.time)
+            cv2.fillConvexPoly(img, self.currentRect, (0, 0, 255))
+
+        self.time += self.timeStep
+        return img
+
+    def resetTime(self):
+        self.time = 0.0
+
+
+if __name__ == '__main__':
+
+    backGr = cv2.imread('../data/graf1.png')
+    fgr = cv2.imread('../data/box.png')
+
+    render = TestSceneRender(backGr, fgr)
+
+    while True:
+
+        img = render.getNextFrame()
+        cv2.imshow('img', img)
+
+        ch = cv2.waitKey(3)
+        if  ch == 27:
+            break
+    #import os
+    #print (os.environ['PYTHONPATH'])
+    cv2.destroyAllWindows()
+
+*********************
+turing.py
+*********************
+#!/usr/bin/env python
+
+'''
+Multiscale Turing Patterns generator
+====================================
+
+Inspired by http://www.jonathanmccabe.com/Cyclic_Symmetric_Multi-Scale_Turing_Patterns.pdf
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    xrange = range
+
+import numpy as np
+import cv2
+from common import draw_str
+import getopt, sys
+from itertools import count
+
+help_message = '''
+USAGE: turing.py [-o <output.avi>]
+
+Press ESC to stop.
+'''
+
+if __name__ == '__main__':
+    print(help_message)
+
+    w, h = 512, 512
+
+    args, args_list = getopt.getopt(sys.argv[1:], 'o:', [])
+    args = dict(args)
+    out = None
+    if '-o' in args:
+        fn = args['-o']
+        out = cv2.VideoWriter(args['-o'], cv2.VideoWriter_fourcc(*'DIB '), 30.0, (w, h), False)
+        print('writing %s ...' % fn)
+
+    a = np.zeros((h, w), np.float32)
+    cv2.randu(a, np.array([0]), np.array([1]))
+
+    def process_scale(a_lods, lod):
+        d = a_lods[lod] - cv2.pyrUp(a_lods[lod+1])
+        for i in xrange(lod):
+            d = cv2.pyrUp(d)
+        v = cv2.GaussianBlur(d*d, (3, 3), 0)
+        return np.sign(d), v
+
+    scale_num = 6
+    for frame_i in count():
+        a_lods = [a]
+        for i in xrange(scale_num):
+            a_lods.append(cv2.pyrDown(a_lods[-1]))
+        ms, vs = [], []
+        for i in xrange(1, scale_num):
+            m, v = process_scale(a_lods, i)
+            ms.append(m)
+            vs.append(v)
+        mi = np.argmin(vs, 0)
+        a += np.choose(mi, ms) * 0.025
+        a = (a-a.min()) / a.ptp()
+
+        if out:
+            out.write(a)
+        vis = a.copy()
+        draw_str(vis, (20, 20), 'frame %d' % frame_i)
+        cv2.imshow('a', vis)
+        if cv2.waitKey(5) == 27:
+            break
+    cv2.destroyAllWindows()
+
+*********************
+video.py
+*********************
+#!/usr/bin/env python
+
+'''
+Video capture sample.
+
+Sample shows how VideoCapture class can be used to acquire video
+frames from a camera of a movie file. Also the sample provides
+an example of procedural video generation by an object, mimicking
+the VideoCapture interface (see Chess class).
+
+'create_capture' is a convinience function for capture creation,
+falling back to procedural video in case of error.
+
+Usage:
+    video.py [--shotdir <shot path>] [source0] [source1] ...'
+
+    sourceN is an
+     - integer number for camera capture
+     - name of video file
+     - synth:<params> for procedural video
+
+Synth examples:
+    synth:bg=../data/lena.jpg:noise=0.1
+    synth:class=chess:bg=../data/lena.jpg:noise=0.1:size=640x480
+
+Keys:
+    ESC    - exit
+    SPACE  - save current frame to <shot path> directory
+
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+from numpy import pi, sin, cos
+
+import cv2
+
+# built-in modules
+from time import clock
+
+# local modules
+from tst_scene_render import TestSceneRender
+import common
+
+class VideoSynthBase(object):
+    def __init__(self, size=None, noise=0.0, bg = None, **params):
+        self.bg = None
+        self.frame_size = (640, 480)
+        if bg is not None:
+            self.bg = cv2.imread(bg, 1)
+            h, w = self.bg.shape[:2]
+            self.frame_size = (w, h)
+
+        if size is not None:
+            w, h = map(int, size.split('x'))
+            self.frame_size = (w, h)
+            self.bg = cv2.resize(self.bg, self.frame_size)
+
+        self.noise = float(noise)
+
+    def render(self, dst):
+        pass
+
+    def read(self, dst=None):
+        w, h = self.frame_size
+
+        if self.bg is None:
+            buf = np.zeros((h, w, 3), np.uint8)
+        else:
+            buf = self.bg.copy()
+
+        self.render(buf)
+
+        if self.noise > 0.0:
+            noise = np.zeros((h, w, 3), np.int8)
+            cv2.randn(noise, np.zeros(3), np.ones(3)*255*self.noise)
+            buf = cv2.add(buf, noise, dtype=cv2.CV_8UC3)
+        return True, buf
+
+    def isOpened(self):
+        return True
+
+class Book(VideoSynthBase):
+    def __init__(self, **kw):
+        super(Book, self).__init__(**kw)
+        backGr = cv2.imread('../data/graf1.png')
+        fgr = cv2.imread('../data/box.png')
+        self.render = TestSceneRender(backGr, fgr, speed = 1)
+
+    def read(self, dst=None):
+        noise = np.zeros(self.render.sceneBg.shape, np.int8)
+        cv2.randn(noise, np.zeros(3), np.ones(3)*255*self.noise)
+
+        return True, cv2.add(self.render.getNextFrame(), noise, dtype=cv2.CV_8UC3)
+
+class Cube(VideoSynthBase):
+    def __init__(self, **kw):
+        super(Cube, self).__init__(**kw)
+        self.render = TestSceneRender(cv2.imread('../data/pca_test1.jpg'), deformation = True,  speed = 1)
+
+    def read(self, dst=None):
+        noise = np.zeros(self.render.sceneBg.shape, np.int8)
+        cv2.randn(noise, np.zeros(3), np.ones(3)*255*self.noise)
+
+        return True, cv2.add(self.render.getNextFrame(), noise, dtype=cv2.CV_8UC3)
+
+class Chess(VideoSynthBase):
+    def __init__(self, **kw):
+        super(Chess, self).__init__(**kw)
+
+        w, h = self.frame_size
+
+        self.grid_size = sx, sy = 10, 7
+        white_quads = []
+        black_quads = []
+        for i, j in np.ndindex(sy, sx):
+            q = [[j, i, 0], [j+1, i, 0], [j+1, i+1, 0], [j, i+1, 0]]
+            [white_quads, black_quads][(i + j) % 2].append(q)
+        self.white_quads = np.float32(white_quads)
+        self.black_quads = np.float32(black_quads)
+
+        fx = 0.9
+        self.K = np.float64([[fx*w, 0, 0.5*(w-1)],
+                        [0, fx*w, 0.5*(h-1)],
+                        [0.0,0.0,      1.0]])
+
+        self.dist_coef = np.float64([-0.2, 0.1, 0, 0])
+        self.t = 0
+
+    def draw_quads(self, img, quads, color = (0, 255, 0)):
+        img_quads = cv2.projectPoints(quads.reshape(-1, 3), self.rvec, self.tvec, self.K, self.dist_coef) [0]
+        img_quads.shape = quads.shape[:2] + (2,)
+        for q in img_quads:
+            cv2.fillConvexPoly(img, np.int32(q*4), color, cv2.LINE_AA, shift=2)
+
+    def render(self, dst):
+        t = self.t
+        self.t += 1.0/30.0
+
+        sx, sy = self.grid_size
+        center = np.array([0.5*sx, 0.5*sy, 0.0])
+        phi = pi/3 + sin(t*3)*pi/8
+        c, s = cos(phi), sin(phi)
+        ofs = np.array([sin(1.2*t), cos(1.8*t), 0]) * sx * 0.2
+        eye_pos = center + np.array([cos(t)*c, sin(t)*c, s]) * 15.0 + ofs
+        target_pos = center + ofs
+
+        R, self.tvec = common.lookat(eye_pos, target_pos)
+        self.rvec = common.mtx2rvec(R)
+
+        self.draw_quads(dst, self.white_quads, (245, 245, 245))
+        self.draw_quads(dst, self.black_quads, (10, 10, 10))
+
+
+classes = dict(chess=Chess, book=Book, cube=Cube)
+
+presets = dict(
+    empty = 'synth:',
+    lena = 'synth:bg=../data/lena.jpg:noise=0.1',
+    chess = 'synth:class=chess:bg=../data/lena.jpg:noise=0.1:size=640x480',
+    book = 'synth:class=book:bg=../data/graf1.png:noise=0.1:size=640x480',
+    cube = 'synth:class=cube:bg=../data/pca_test1.jpg:noise=0.0:size=640x480'
+)
+
+
+def create_capture(source = 0, fallback = presets['chess']):
+    '''source: <int> or '<int>|<filename>|synth [:<param_name>=<value> [:...]]'
+    '''
+    source = str(source).strip()
+    chunks = source.split(':')
+    # handle drive letter ('c:', ...)
+    if len(chunks) > 1 and len(chunks[0]) == 1 and chunks[0].isalpha():
+        chunks[1] = chunks[0] + ':' + chunks[1]
+        del chunks[0]
+
+    source = chunks[0]
+    try: source = int(source)
+    except ValueError: pass
+    params = dict( s.split('=') for s in chunks[1:] )
+
+    cap = None
+    if source == 'synth':
+        Class = classes.get(params.get('class', None), VideoSynthBase)
+        try: cap = Class(**params)
+        except: pass
+    else:
+        cap = cv2.VideoCapture(source)
+        if 'size' in params:
+            w, h = map(int, params['size'].split('x'))
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
+    if cap is None or not cap.isOpened():
+        print('Warning: unable to open video source: ', source)
+        if fallback is not None:
+            return create_capture(fallback, None)
+    return cap
+
+if __name__ == '__main__':
+    import sys
+    import getopt
+
+    print(__doc__)
+
+    args, sources = getopt.getopt(sys.argv[1:], '', 'shotdir=')
+    args = dict(args)
+    shotdir = args.get('--shotdir', '.')
+    if len(sources) == 0:
+        sources = [ 0 ]
+
+    caps = list(map(create_capture, sources))
+    shot_idx = 0
+    while True:
+        imgs = []
+        for i, cap in enumerate(caps):
+            ret, img = cap.read()
+            imgs.append(img)
+            cv2.imshow('capture %d' % i, img)
+        ch = cv2.waitKey(1)
+        if ch == 27:
+            break
+        if ch == ord(' '):
+            for i, img in enumerate(imgs):
+                fn = '%s/shot_%d_%03d.bmp' % (shotdir, i, shot_idx)
+                cv2.imwrite(fn, img)
+                print(fn, 'saved')
+            shot_idx += 1
+    cv2.destroyAllWindows()
+
+*********************
+video_threaded.py
+*********************
+#!/usr/bin/env python
+
+'''
+Multithreaded video processing sample.
+Usage:
+   video_threaded.py {<video device number>|<video file name>}
+
+   Shows how python threading capabilities can be used
+   to organize parallel captured frame processing pipeline
+   for smoother playback.
+
+Keyboard shortcuts:
+
+   ESC - exit
+   space - switch between multi and single threaded processing
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+
+from multiprocessing.pool import ThreadPool
+from collections import deque
+
+from common import clock, draw_str, StatValue
+import video
+
+
+class DummyTask:
+    def __init__(self, data):
+        self.data = data
+    def ready(self):
+        return True
+    def get(self):
+        return self.data
+
+if __name__ == '__main__':
+    import sys
+
+    print(__doc__)
+
+    try:
+        fn = sys.argv[1]
+    except:
+        fn = 0
+    cap = video.create_capture(fn)
+
+
+    def process_frame(frame, t0):
+        # some intensive computation...
+        frame = cv2.medianBlur(frame, 19)
+        frame = cv2.medianBlur(frame, 19)
+        return frame, t0
+
+    threadn = cv2.getNumberOfCPUs()
+    pool = ThreadPool(processes = threadn)
+    pending = deque()
+
+    threaded_mode = True
+
+    latency = StatValue()
+    frame_interval = StatValue()
+    last_frame_time = clock()
+    while True:
+        while len(pending) > 0 and pending[0].ready():
+            res, t0 = pending.popleft().get()
+            latency.update(clock() - t0)
+            draw_str(res, (20, 20), "threaded      :  " + str(threaded_mode))
+            draw_str(res, (20, 40), "latency        :  %.1f ms" % (latency.value*1000))
+            draw_str(res, (20, 60), "frame interval :  %.1f ms" % (frame_interval.value*1000))
+            cv2.imshow('threaded video', res)
+        if len(pending) < threadn:
+            ret, frame = cap.read()
+            t = clock()
+            frame_interval.update(t - last_frame_time)
+            last_frame_time = t
+            if threaded_mode:
+                task = pool.apply_async(process_frame, (frame.copy(), t))
+            else:
+                task = DummyTask(process_frame(frame, t))
+            pending.append(task)
+        ch = cv2.waitKey(1)
+        if ch == ord(' '):
+            threaded_mode = not threaded_mode
+        if ch == 27:
+            break
+cv2.destroyAllWindows()
+
+*********************
+video_v4l2.py
+*********************
+#!/usr/bin/env python
+
+'''
+VideoCapture sample showcasing  some features of the Video4Linux2 backend
+
+Sample shows how VideoCapture class can be used to control parameters
+of a webcam such as focus or framerate.
+Also the sample provides an example how to access raw images delivered
+by the hardware to get a grayscale image in a very efficient fashion.
+
+Keys:
+    ESC    - exit
+    g      - toggle optimized grayscale conversion
+
+'''
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import cv2
+
+def decode_fourcc(v):
+    v = int(v)
+    return "".join([chr((v >> 8 * i) & 0xFF) for i in range(4)])
+
+font = cv2.FONT_HERSHEY_SIMPLEX
+color = (0, 255, 0)
+
+cap = cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_AUTOFOCUS, False)  # Known bug: https://github.com/opencv/opencv/pull/5474
+
+cv2.namedWindow("Video")
+
+convert_rgb = True
+fps = int(cap.get(cv2.CAP_PROP_FPS))
+focus = int(min(cap.get(cv2.CAP_PROP_FOCUS) * 100, 2**31-1))  # ceil focus to C_LONG as Python3 int can go to +inf
+
+cv2.createTrackbar("FPS", "Video", fps, 30, lambda v: cap.set(cv2.CAP_PROP_FPS, v))
+cv2.createTrackbar("Focus", "Video", focus, 100, lambda v: cap.set(cv2.CAP_PROP_FOCUS, v / 100))
+
+while True:
+    status, img = cap.read()
+
+    fourcc = decode_fourcc(cap.get(cv2.CAP_PROP_FOURCC))
+
+    fps = cap.get(cv2.CAP_PROP_FPS)
+
+    if not bool(cap.get(cv2.CAP_PROP_CONVERT_RGB)):
+        if fourcc == "MJPG":
+            img = cv2.imdecode(img, cv2.IMREAD_GRAYSCALE)
+        elif fourcc == "YUYV":
+            img = cv2.cvtColor(img, cv2.COLOR_YUV2GRAY_YUYV)
+        else:
+            print("unsupported format")
+            break
+
+    cv2.putText(img, "Mode: {}".format(fourcc), (15, 40), font, 1.0, color)
+    cv2.putText(img, "FPS: {}".format(fps), (15, 80), font, 1.0, color)
+    cv2.imshow("Video", img)
+
+    k = cv2.waitKey(1)
+
+    if k == 27:
+        break
+    elif k == ord('g'):
+        convert_rgb = not convert_rgb
+        cap.set(cv2.CAP_PROP_CONVERT_RGB, convert_rgb)
+
+*********************
+watershed.py
+*********************
+#!/usr/bin/env python
+
+'''
+Watershed segmentation
+=========
+
+This program demonstrates the watershed segmentation algorithm
+in OpenCV: watershed().
+
+Usage
+-----
+watershed.py [image filename]
+
+Keys
+----
+  1-7   - switch marker color
+  SPACE - update segmentation
+  r     - reset
+  a     - toggle autoupdate
+  ESC   - exit
+
+'''
+
+
+# Python 2/3 compatibility
+from __future__ import print_function
+
+import numpy as np
+import cv2
+from common import Sketcher
+
+class App:
+    def __init__(self, fn):
+        self.img = cv2.imread(fn)
+        if self.img is None:
+            raise Exception('Failed to load image file: %s' % fn)
+
+        h, w = self.img.shape[:2]
+        self.markers = np.zeros((h, w), np.int32)
+        self.markers_vis = self.img.copy()
+        self.cur_marker = 1
+        self.colors = np.int32( list(np.ndindex(2, 2, 2)) ) * 255
+
+        self.auto_update = True
+        self.sketch = Sketcher('img', [self.markers_vis, self.markers], self.get_colors)
+
+    def get_colors(self):
+        return list(map(int, self.colors[self.cur_marker])), self.cur_marker
+
+    def watershed(self):
+        m = self.markers.copy()
+        cv2.watershed(self.img, m)
+        overlay = self.colors[np.maximum(m, 0)]
+        vis = cv2.addWeighted(self.img, 0.5, overlay, 0.5, 0.0, dtype=cv2.CV_8UC3)
+        cv2.imshow('watershed', vis)
+
+    def run(self):
+        while cv2.getWindowProperty('img', 0) != -1 or cv2.getWindowProperty('watershed', 0) != -1:
+            ch = cv2.waitKey(50)
+            if ch == 27:
+                break
+            if ch >= ord('1') and ch <= ord('7'):
+                self.cur_marker = ch - ord('0')
+                print('marker: ', self.cur_marker)
+            if ch == ord(' ') or (self.sketch.dirty and self.auto_update):
+                self.watershed()
+                self.sketch.dirty = False
+            if ch in [ord('a'), ord('A')]:
+                self.auto_update = not self.auto_update
+                print('auto_update if', ['off', 'on'][self.auto_update])
+            if ch in [ord('r'), ord('R')]:
+                self.markers[:] = 0
+                self.markers_vis[:] = self.img
+                self.sketch.show()
+        cv2.destroyAllWindows()
+
+
+if __name__ == '__main__':
+    import sys
+    try:
+        fn = sys.argv[1]
+    except:
+        fn = '../data/fruits.jpg'
+    print(__doc__)
+    App(fn).run()
+
+*********************
+CMakeLists.txt
+*********************
+if(INSTALL_PYTHON_EXAMPLES)
+  file(GLOB install_list *.py )
+  install(FILES ${install_list}
+          DESTINATION ${OPENCV_SAMPLES_SRC_INSTALL_PATH}/python
+          PERMISSIONS OWNER_READ GROUP_READ WORLD_READ COMPONENT samples)
+endif()
+
+*********************
+unused_api.txt
+*********************
+cv2.AgastFeatureDetector_create
+cv2.BFMatcher_create
+cv2.BOWImgDescriptorExtractor
+cv2.BOWKMeansTrainer
+cv2.CascadeClassifier_convert
+cv2.DMatch
+cv2.DescriptorMatcher_create
+cv2.DualTVL1OpticalFlow_create
+cv2.FarnebackOpticalFlow_create
+cv2.FastFeatureDetector_create
+cv2.FileNode
+cv2.FileStorage
+cv2.FlannBasedMatcher_create
+cv2.GFTTDetector_create
+cv2.HOGDescriptor_getDaimlerPeopleDetector
+cv2.HuMoments
+cv2.KAZE_create
+cv2.KeyPoint
+cv2.KeyPoint_convert
+cv2.KeyPoint_overlap
+cv2.LUT
+cv2.Laplacian
+cv2.Mahalanobis
+cv2.PCABackProject
+cv2.PCACompute
+cv2.PCAProject
+cv2.PSNR
+cv2.RQDecomp3x3
+cv2.Rodrigues
+cv2.SVBackSubst
+cv2.Scharr
+cv2.SimpleBlobDetector_Params
+cv2.SimpleBlobDetector_create
+cv2.SparsePyrLKOpticalFlow_create
+cv2.StereoBM_create
+cv2.Subdiv2D
+cv2.TickMeter
+cv2.UMat
+cv2.absdiff
+cv2.accumulate
+cv2.accumulateProduct
+cv2.accumulateSquare
+cv2.accumulateWeighted
+cv2.addText
+cv2.applyColorMap
+cv2.arrowedLine
+cv2.batchDistance
+cv2.bilateralFilter
+cv2.bitwise_or
+cv2.bitwise_xor
+cv2.blur
+cv2.borderInterpolate
+cv2.boxFilter
+cv2.boxPoints
+cv2.buildOpticalFlowPyramid
+cv2.calcCovarMatrix
+cv2.calibrateCameraExtended
+cv2.calibrationMatrixValues
+cv2.checkHardwareSupport
+cv2.checkRange
+cv2.clipLine
+cv2.colorChange
+cv2.compare
+cv2.compareHist
+cv2.completeSymm
+cv2.composeRT
+cv2.computeCorrespondEpilines
+cv2.connectedComponents
+cv2.connectedComponentsWithAlgorithm
+cv2.connectedComponentsWithStats
+cv2.connectedComponentsWithStatsWithAlgorithm
+cv2.convertFp16
+cv2.convertMaps
+cv2.convertPointsFromHomogeneous
+cv2.convertPointsToHomogeneous
+cv2.convertScaleAbs
+cv2.convexityDefects
+cv2.cornerHarris
+cv2.cornerMinEigenVal
+cv2.correctMatches
+cv2.countNonZero
+cv2.createAffineTransformer
+cv2.createAlignMTB
+cv2.createBackgroundSubtractorKNN
+cv2.createBackgroundSubtractorMOG2
+cv2.createButton
+cv2.createCLAHE
+cv2.createCalibrateDebevec
+cv2.createCalibrateRobertson
+cv2.createChiHistogramCostExtractor
+cv2.createEMDHistogramCostExtractor
+cv2.createEMDL1HistogramCostExtractor
+cv2.createHausdorffDistanceExtractor
+cv2.createLineSegmentDetector
+cv2.createMergeDebevec
+cv2.createMergeMertens
+cv2.createMergeRobertson
+cv2.createNormHistogramCostExtractor
+cv2.createOptFlow_DualTVL1
+cv2.createShapeContextDistanceExtractor
+cv2.createStitcher
+cv2.createThinPlateSplineShapeTransformer
+cv2.createTonemap
+cv2.createTonemapDrago
+cv2.createTonemapDurand
+cv2.createTonemapMantiuk
+cv2.createTonemapReinhard
+cv2.cubeRoot
+cv2.dct
+cv2.decolor
+cv2.decomposeEssentialMat
+cv2.decomposeHomographyMat
+cv2.decomposeProjectionMatrix
+cv2.demosaicing
+cv2.denoise_TVL1
+cv2.detailEnhance
+cv2.determinant
+cv2.displayOverlay
+cv2.displayStatusBar
+cv2.distanceTransform
+cv2.divide
+cv2.drawMarker
+cv2.drawMatches
+cv2.drawMatchesKnn
+cv2.edgePreservingFilter
+cv2.eigen
+cv2.ellipse2Poly
+cv2.error
+cv2.estimateAffine2D
+cv2.estimateAffine3D
+cv2.estimateAffinePartial2D
+cv2.estimateRigidTransform
+cv2.exp
+cv2.extractChannel
+cv2.fastAtan2
+cv2.fastNlMeansDenoising
+cv2.fastNlMeansDenoisingColored
+cv2.fastNlMeansDenoisingColoredMulti
+cv2.fastNlMeansDenoisingMulti
+cv2.fillPoly
+cv2.filterSpeckles
+cv2.findCirclesGrid
+cv2.findEssentialMat
+cv2.findFundamentalMat
+cv2.findNonZero
+cv2.findTransformECC
+cv2.fitEllipse
+cv2.flip
+cv2.gemm
+cv2.getAffineTransform
+cv2.getCPUTickCount
+cv2.getDefaultNewCameraMatrix
+cv2.getDerivKernels
+cv2.getGaussianKernel
+cv2.getNumThreads
+cv2.getPerspectiveTransform
+cv2.getRotationMatrix2D
+cv2.getTextSize
+cv2.getThreadNum
+cv2.getValidDisparityROI
+cv2.groupRectangles
+cv2.haveOpenVX
+cv2.hconcat
+cv2.idct
+cv2.illuminationChange
+cv2.imencode
+cv2.imreadmulti
+cv2.initCameraMatrix2D
+cv2.initUndistortRectifyMap
+cv2.initWideAngleProjMap
+cv2.insertChannel
+cv2.integral
+cv2.integral2
+cv2.integral3
+cv2.intersectConvexConvex
+cv2.invert
+cv2.magnitude
+cv2.matMulDeriv
+cv2.matchShapes
+cv2.max
+cv2.mean
+cv2.meanShift
+cv2.meanStdDev
+cv2.merge
+cv2.min
+cv2.minAreaRect
+cv2.minEnclosingCircle
+cv2.minEnclosingTriangle
+cv2.mixChannels
+cv2.mulTransposed
+cv2.multiply
+cv2.norm
+cv2.patchNaNs
+cv2.pencilSketch
+cv2.phase
+cv2.phaseCorrelate
+cv2.pointPolygonTest
+cv2.polarToCart
+cv2.pow
+cv2.preCornerDetect
+cv2.pyrMeanShiftFiltering
+cv2.randShuffle
+cv2.recoverPose
+cv2.rectify3Collinear
+cv2.reduce
+cv2.repeat
+cv2.resizeWindow
+cv2.rotate
+cv2.rotatedRectangleIntersection
+cv2.sampsonDistance
+cv2.scaleAdd
+cv2.seamlessClone
+cv2.sepFilter2D
+cv2.setIdentity
+cv2.setNumThreads
+cv2.setRNGSeed
+cv2.setTrackbarMax
+cv2.setTrackbarMin
+cv2.setTrackbarPos
+cv2.setUseOpenVX
+cv2.setUseOptimized
+cv2.setWindowProperty
+cv2.setWindowTitle
+cv2.solve
+cv2.solveCubic
+cv2.solveLP
+cv2.solvePnPRansac
+cv2.solvePoly
+cv2.sort
+cv2.sortIdx
+cv2.spatialGradient
+cv2.sqrBoxFilter
+cv2.startWindowThread
+cv2.stereoCalibrate
+cv2.stereoRectify
+cv2.stereoRectifyUncalibrated
+cv2.stylization
+cv2.subtract
+cv2.sumElems
+cv2.textureFlattening
+cv2.trace
+cv2.transform
+cv2.transpose
+cv2.triangulatePoints
+cv2.undistortPoints
+cv2.useOpenVX
+cv2.useOptimized
+cv2.validateDisparity
+cv2.vconcat
+cv2.waitKeyEx
+EOF
+
