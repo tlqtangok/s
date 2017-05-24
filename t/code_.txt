@@ -1838,3 +1838,4 @@ int _tmain(int argc, char** argv)
     Mat id_dst_m; 
 resize( id_m, id_dst_m, Size(id_m.cols, id_m.rows*(1+3.5/100)), 0, 0, INTER_LINEAR);
 
+Mat id_mm(id_m, Range(1,id_m.rows-20), Range::all()); 
