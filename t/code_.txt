@@ -1839,3 +1839,56 @@ int _tmain(int argc, char** argv)
 resize( id_m, id_dst_m, Size(id_m.cols, id_m.rows*(1+3.5/100)), 0, 0, INTER_LINEAR);
 
 Mat id_mm(id_m, Range(1,id_m.rows-20), Range::all()); 
+uchar* from_mat_2_pdata(uchar* pData, Mat& id_mt){
+
+    int i=0;
+    int j=0;
+
+    int rows_ = id_mt.rows; 
+    int cols_ = id_mt.cols;
+    int cnt = 0;
+    for(i=0;i<rows_;i++)
+    {
+        for(j=0;j<cols_;j++)
+        {
+            auto t = id_mt.row(i).col(j).data; 
+            pData[cnt++] = t[0]; 
+        }
+    }
+
+
+    return pData;
+
+}
+
+Mat from_pdata_2_mat(uchar* pData, int rows_, int cols_){
+    Mat id_mt(rows_, cols_, CV_8UC(1));
+    int i=0; int j=0 ; 
+    int cnt = 0;
+    for(i=0;i<rows_;i++)
+    {
+        for(j=0;j<cols_;j++)
+        {
+            auto t = id_mt.row(i).col(j).data; 
+            t[0] = pData[cnt++]; 
+        }
+    }
+
+    return id_mt;
+}
+
+
+uchar* cut_pdata_by_bottom_len(uchar* pData,int rows_, int cols_ ,  int to_cut_bottom_len){
+
+    Mat id_mt = from_pdata_2_mat(pData, rows_,cols_);
+
+
+    Mat id_mm(id_mt, Range(0,id_mt.rows), Range(0,id_mt.cols-to_cut_bottom_len)); 
+    Mat id_dst_m; 
+    resize(id_mm, id_dst_m, Size(cols_, rows_), 0,0, INTER_LINEAR);
+
+    from_mat_2_pdata(pData, id_dst_m); 
+    return pData;
+}
+
+
