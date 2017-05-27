@@ -1892,3 +1892,58 @@ uchar* cut_pdata_by_bottom_len(uchar* pData,int rows_, int cols_ ,  int to_cut_b
 }
 
 
+uchar* cut_pdata_by_bottom_len(uchar* pData,int rows_, int cols_ ,  bool is_cut_cols_, int to_cut_len){
+
+
+    double Time = (double)cvGetTickCount();
+// Ëã·¨¹ý³Ì
+
+
+
+
+
+    Mat id_mt = from_pdata_2_mat(pData, rows_,cols_);
+    Mat id_mm; 
+    Mat id_dst_m; 
+/*
+    enum
+{
+    INTER_NEAREST=CV_INTER_NN, //!< nearest neighbor interpolation
+    INTER_LINEAR=CV_INTER_LINEAR, //!< bilinear interpolation
+    INTER_CUBIC=CV_INTER_CUBIC, //!< bicubic interpolation
+    INTER_AREA=CV_INTER_AREA, //!< area-based (or super) interpolation
+    INTER_LANCZOS4=CV_INTER_LANCZOS4, //!< Lanczos interpolation over 8x8 neighborhood
+    INTER_MAX=7,
+    WARP_INVERSE_MAP=CV_WARP_INVERSE_MAP
+};
+*/
+
+    
+    int interop_way = INTER_NEAREST;
+    if ( is_cut_cols_ ){
+        
+        id_mm = Mat(id_mt, Range(0,id_mt.rows), Range(0,id_mt.cols-to_cut_len)); 
+         resize(id_mm, id_dst_m, Size(cols_, rows_), 0,0, interop_way);
+    }
+    else {
+        id_mm = Mat(id_mt, Range(0,id_mt.rows-to_cut_len), Range(0,id_mt.cols)); 
+        resize(id_mm, id_dst_m, Size(cols_, rows_), 0,0, interop_way);
+    }
+
+   
+    from_mat_2_pdata(pData, id_dst_m); 
+
+    Time = (double)cvGetTickCount() - Time ;
+
+    printf( "run time = %gms\n", Time /(cvGetTickFrequency()*1000) );//ºÁÃë
+    return pData;
+}
+
+
+
+Mat  read_bmp_and_T(string str_fn){
+    Mat id_m = imread(str_fn); 
+    return id_m.t(); 
+}
+
+
