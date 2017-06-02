@@ -1947,3 +1947,29 @@ Mat  read_bmp_and_T(string str_fn){
 }
 
 
+#include <thread>
+#include <mutex>
+#include <iostream>
+using namespace std;
+mutex g_mutex;
+int g_count = 0;
+int main()
+{
+	thread thr1([]() {
+			for (int i = 0;i < 5;i++) {
+			lock_guard<mutex> lock(g_mutex); //¨´
+			g_count += 10;
+			}
+			});
+	thread thr2([]() {
+			for (int i = 0;i < 5;i++) {
+			lock_guard<mutex> lock(g_mutex); //¨²
+			g_count += 20;
+			}
+			});
+	thr1.join();
+	thr2.join();
+	cout << g_count << endl;
+}
+ 
+
