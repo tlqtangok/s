@@ -2078,3 +2078,46 @@ int main()
 
 EOF
 
+
+	auto fun = [](){
+	cout << "lambda fun()\n"; 
+	};  // must have a semicolon here 
+
+	fun();
+
+#include<iostream>
+#include<thread>
+#include<chrono>
+#include <atomic>
+using namespace std;
+atomic_int num{0};
+
+const int N = 10000000;
+
+void run()
+{
+
+	for (int i = 0; i < N; i++)
+	{
+		num++;
+	}
+}
+
+int main()
+{
+// lambda + this_thread 
+	thread th1([]() {
+			//让线程等待3秒
+			this_thread::sleep_for(chrono::seconds(3));
+			//让cpu执行其他空闲的线程
+			this_thread::yield();
+			//线程id
+			cout << this_thread::get_id() << endl;
+			});
+
+	th1.join();
+	return 0;
+
+
+}
+
