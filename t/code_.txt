@@ -1896,7 +1896,7 @@ uchar* cut_pdata_by_bottom_len(uchar* pData,int rows_, int cols_ ,  bool is_cut_
 
 
     double Time = (double)cvGetTickCount();
-// À„∑®π˝≥Ã
+// ?„∑®????
 
 
 
@@ -1935,7 +1935,7 @@ uchar* cut_pdata_by_bottom_len(uchar* pData,int rows_, int cols_ ,  bool is_cut_
 
     Time = (double)cvGetTickCount() - Time ;
 
-    printf( "run time = %gms\n", Time /(cvGetTickFrequency()*1000) );//∫¡√Î
+    printf( "run time = %gms\n", Time /(cvGetTickFrequency()*1000) );//????
     return pData;
 }
 
@@ -1957,13 +1957,13 @@ int main()
 {
 	thread thr1([]() {
 			for (int i = 0;i < 5;i++) {
-			lock_guard<mutex> lock(g_mutex); //®¥
+			lock_guard<mutex> lock(g_mutex); //??
 			g_count += 10;
 			}
 			});
 	thread thr2([]() {
 			for (int i = 0;i < 5;i++) {
-			lock_guard<mutex> lock(g_mutex); //®≤
+			lock_guard<mutex> lock(g_mutex); //??
 			g_count += 20;
 			}
 			});
@@ -1972,7 +1972,6 @@ int main()
 	cout << g_count << endl;
 }
  
-
 *********************
 test.cpp
 *********************
@@ -2004,9 +2003,8 @@ int main()
 	thread t3(fun2, ref(n)); //“˝”√
 	thread t4(move(t3)); //t4÷¥––t3£¨t3≤ª «thread
 	t4.join();
-	cout << "n
-		=" << n << '\n';
-	return 0;
+	cout << "n=" <<n << endl;
+       	return 0;
 }
 
 *********************
@@ -2020,10 +2018,11 @@ alias arm_g++=${ARM_GCC_ROOT}/bin/arm-linux-gnueabihf-g++
 THIRD_PARTY_DIR=/home/cross/imx6qplus/third_libs_imx6qp
 OPENCV_INC=${THIRD_PARTY_DIR}/include
 LIB_DIR=${THIRD_PARTY_DIR}/lib
+LIB_DIR_QT=/home/cross/imx6qplus/QT/lib
  NAME_OF_LIBS="-lopencv_calib3d -lopencv_contrib -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_legacy -lopencv_ml -lopencv_nonfree -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab"
+#export LD_LIBRARY_PATH=${LIB_DIR}:${LIB_DIR_QT}:$LD_LIBRARY_PATH
 
-
-arm_g++ -std=c++11  -pthread -Wl,-no-as-needed test.cpp  -I${OPENCV_INC} -L${LIB_DIR} ${NAME_OF_LIBS}
+arm_g++ -std=c++11  -pthread -Wl,-no-as-needed test.cpp  -I${OPENCV_INC} -L${LIB_DIR_QT}  -L${LIB_DIR} 
 
 
 EOF
