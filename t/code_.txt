@@ -2027,3 +2027,20 @@ arm_g++ -std=c++11  -pthread -Wl,-no-as-needed test.cpp  -I${OPENCV_INC} -L${LIB
 
 EOF
 
+//get cpu number
+#include<iostream>
+#include<thread>
+#include<chrono>
+#include <atomic>
+using namespace std;
+#include<iostream>
+#include<thread>
+using namespace std;
+int main()
+{
+        auto n = thread::hardware_concurrency();//获取cpu核心个数
+        cout << n << endl;
+        return 0;
+}
+
+
