@@ -1,6 +1,7 @@
 #!perl
 # depend on gs = git's ROOT
 my $gs = @ENV{gs};
+#chdir ($gs);
 my $filename = ""; 
 my $comment = "";
 
