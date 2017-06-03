@@ -2044,3 +2044,37 @@ int main()
 }
 
 
+*********************
+/home/tanglq/t/test.cpp
+*********************
+
+#include<iostream>
+#include<thread>
+#include<chrono>
+#include <atomic>
+using namespace std;
+atomic_int num{0};
+
+const int N = 100000;
+
+void run()
+{
+	for (int i = 0; i < N; i++)
+	{
+		num++;
+	}
+}
+int main()
+{
+	clock_t start = clock();
+	thread t1(run);
+	thread t2(run);
+	t1.join();
+	t2.join();
+	clock_t end = clock();
+	cout << "num=" << num << ",ÓÃÊ± " << end - start << " ms" << endl;
+	return 0;
+}
+
+EOF
+
