@@ -2244,3 +2244,75 @@ int _tmain(int argc, char** argv)
 
 
 ///////
+
+
+void print_iplimage(IplImage* img){
+
+    int rows = img->height;
+    int cols = img->width; 
+    int step = img->widthStep; 
+    for ( int i = 0; i< rows; i++)
+    {
+        for ( int j = 0; j< cols; j++)
+        {
+            uchar t = CV_IMAGE_ELEM( img, uchar,  i, j ); 
+            printf("%d ", t); 
+        }
+        cout << "\n"; 
+    }
+};
+
+
+int _tmain(int argc, char** argv)
+{
+    int r = 40; 
+    int c = 40;
+
+    IplImage * id_mm = cvCreateImage( cvSize(c,r), 8, 1 ); 
+    CV_IMAGE_ELEM( id_mm, uchar, id_mm->height/2, id_mm->width/2) = 0; 
+    cvNamedWindow( "fileName");
+    cvShowImage( "fileName", id_mm );
+    cvSaveImage("filename.bmp",id_mm);
+    cvWaitKey(1);
+
+    IplImage* id_mmm = cvCloneImage( id_mm ); 
+    cvReleaseImage( &id_mm ); 
+
+
+
+    // only have id_mmm
+    CvMat *subMat = cvCreateMat( id_mmm->height/2, id_mmm->width/2, CV_8UC1); 
+    cvGetSubRect(id_mmm, subMat, cvRect(0, 0, id_mmm->height/2,id_mmm->width/2));
+    cvReleaseMat( &subMat );
+
+    cvReleaseImage( &id_mmm );
+
+
+    // only get id_m
+    CvMat* id_m = cvCreateMat(2, 4, CV_32FC1);  // mem 0 
+    cvmSet( id_m, 1,1, 5.99f); 
+    cvmGet( id_m, 1,1 ); 
+    auto sz_id_m = cvGetSize( id_m ); sz_id_m.width; sz_id_m.height; 
+
+    //cvZero( id_m );
+    double t = cvmGet( id_m, 1 ,1); 
+    printf("%f\n", t); 
+
+
+    cvReleaseMat( &id_m ); // rel 0
+
+
+    CvScalar id_rgb     = CV_RGB(255,255,255); 		// cv rgb 
+    //cout << id_rgb.val[0] << endl; 
+
+
+    __P__; // system("pause");
+    return 0;
+} // end main()
+
+
+
+
+
+
+///////
