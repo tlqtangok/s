@@ -2394,3 +2394,51 @@ int main()
         return 0;
 }
 
+// cmd system buf 
+// char len 
+// sigint
+int run_cmd(char* cmd, char *res){
+        FILE *pf = popen(cmd, "r");
+        const int TO_READ_SZ = 1023;
+        if ( 0 != fread(res,TO_READ_SZ, 1, pf)){
+                printf( "- cannot run system cmd %s\n", cmd ); 
+                return -1; 
+        } ;
+        pclose(pf);
+        return 0;
+}
+void stop_in_sig_int(){
+        fclose(fp);
+        printf( "\n- meet ctrl+c \n");
+        _exit(0);
+
+}
+int main(int argc, char *argv[])
+{  
+
+        signal(SIGINT,stop_in_sig_int);
+
+        int retval = -1;
+        double cur_value;
+        double high_value;
+        cur_value = 0.0;
+        high_value = 0.0;
+        char buf[1024] = {0};
+        run_cmd( "date \"+%Y%m%d_%H%M\" ", buf ); 
+        printf( "%s", buf ); 
+
+        char buf_fn[1024] ={0};
+        sprintf( buf_fn, "temp_log_%s", buf); 
+        buf_fn[strlen("temp_log_20170406_xxxx")] = '\0';
+        fp = fopen(buf_fn, "a+");
+        while (1)
+        {
+                retval =get_cpu_temperature("coretemp-isa-0000", &cur_value, &high_value);
+                fprintf(fp, "cur_value=%f,high_value=%f\n",cur_value,high_value);
+                printf( "cur_value=%f,high_value=%f\n",cur_value,high_value);
+                sleep(5);
+        }
+        fclose( fp ); 
+        return retval;
+}
+
