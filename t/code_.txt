@@ -2316,3 +2316,24 @@ int _tmain(int argc, char** argv)
 
 
 ///////
+// iplimage open image and show img 
+void show_iplimg(IplImage *img){
+
+    cvNamedWindow("tmp_win" ); 
+
+    cvShowImage( "tmp_win", img);
+    cvWaitKey();
+    return;
+};
+
+int _tmain(int argc, char** argv)
+{
+    IplImage* pImg = cvLoadImage( "filename.bmp", 0);
+
+    show_iplimg( pImg ); 
+
+    __P__; // system("pause");
+    return 0;
+} // end main()
+
+
