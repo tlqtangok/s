@@ -2442,3 +2442,5 @@ int main(int argc, char *argv[])
         return retval;
 }
 
+date --set="2017-06-08 14:51"
+// set time and date by time STRING string 
