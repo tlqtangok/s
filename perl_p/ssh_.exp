@@ -1,0 +1,19 @@
+#!expect
+#####################
+# usage:
+# alias ssh_79='expect /home/tanglq/perl_p/ssh_.exp root 192.168.8.79 root 22'
+set userid [lindex $argv 0]
+set mname [lindex $argv 1]
+set password [lindex $argv 2]
+set port [lindex $argv 3]
+#####################
+
+spawn -noecho ssh  $userid@$mname -p $port
+
+expect {
+	-re "^.*.assword.*$" { send "$password\n";}
+}
+
+interact 
+
+
