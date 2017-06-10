@@ -2547,3 +2547,15 @@ int run_cmd(char* cmd, char *res){
 
 
 // ////////////////////////////////////////////////////
+// windows pipe _popen() 
+int run_cmd(char* cmd, char *res) {
+	FILE *pf = _popen(cmd, "r");
+	const int TO_READ_SZ = 1024;
+	if (0 != fread(res, TO_READ_SZ, 1, pf)) {
+		printf("- cannot run system cmd %s\n", cmd);
+		return -1;
+	};
+	_pclose(pf);
+	return 0;
+}
+
