@@ -2444,3 +2444,106 @@ int main(int argc, char *argv[])
 
 date --set="2017-06-08 14:51"
 // set time and date by time STRING string 
+// linux SIGALAM timer alarm usage 
+// ////////////////////////////////////////////////////
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <time.h>
+#include <sys/time.h>
+int sec;
+const int BUF_TIME_MAX  = 256; 
+char buf_time[BUF_TIME_MAX] = {0};
+
+int run_cmd(char* cmd, char *res);
+
+char* get_now(int flag_print=0){
+        run_cmd( (char*)"date \"+%Y%m%d_%H%M : %S\" ", buf_time );
+        if(flag_print){
+                printf( "%s\n", buf_time);
+        }
+        return buf_time;
+}
+void sigroutine(int signo){
+        get_now(1); 
+        switch (signo){
+                case SIGALRM:
+                        printf("Catch a signal -- SIGALRM \n");
+                        //                      signal(SIGALRM, sigroutine);
+                        break;
+                case SIGVTALRM:
+                        printf("Catch a signal -- VT \n");
+                        //      signal(SIGVTALRM, sigroutine);
+                        break;
+        }
+        return;
+}
+
+
+
+void sigalrm_fn(int sig)
+{
+        static int cnt = 9; 
+        cnt--;
+        if(cnt){
+                printf(" SIGALARM:%d, cnt:%d!\n", sig,cnt);
+                alarm(1);
+                return ;
+        }
+        //_exit(0);
+        //clear alarm
+        alarm(0);
+        return;
+}
+
+
+
+int main()
+{
+
+
+
+           itimerval value, ovalue, value2; //(1)
+           sec = 5;
+           printf("process id is %d\n", getpid());
+           signal(SIGALRM, sigroutine);
+           signal(SIGVTALRM, sigroutine);
+           int start_fire_time = 3; 
+           int interval_time = 1; 
+        // timer first fire from t0=0+10, then intervally fire at 10+4
+        value.it_value.tv_sec = start_fire_time;
+        value.it_value.tv_usec = 0;
+        value.it_interval.tv_sec = interval_time;
+        value.it_interval.tv_usec = 0;
+        setitimer(ITIMER_REAL, &value, &ovalue); //(2)
+
+
+        value2.it_value.tv_sec = 0;
+        value2.it_value.tv_usec = 500000;
+        value2.it_interval.tv_sec = 0;
+        value2.it_interval.tv_usec = 500000;
+        setitimer(ITIMER_VIRTUAL, &value2, &ovalue);
+
+        //signal(SIGALRM, sigalrm_fn);
+        //alarm(3);
+
+        for(;;){
+;
+        }
+}
+
+int run_cmd(char* cmd, char *res){
+        FILE *pf = popen(cmd, "r");
+        const int TO_READ_SZ = 1023;
+        if ( 0 != fread(res,TO_READ_SZ, 1, pf)){
+                printf( "- cannot run system cmd %s\n", cmd ); 
+                return -1; 
+        } ;
+        pclose(pf);
+        return 0;
+}
+
+
+// ////////////////////////////////////////////////////
