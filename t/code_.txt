@@ -2559,3 +2559,65 @@ int run_cmd(char* cmd, char *res) {
 	return 0;
 }
 
+int _tmain(int argc, char** argv)
+{
+    ofstream of("x:\\txt1.txt", ios::out); 
+    of << "ABC123" << endl ; 
+    of.close(); 
+
+
+    ifstream if_("x:\\txt1.txt", ios::in); 
+
+    int cnt = 9; 
+    int x = 0; 
+
+
+    string sb = ""; 
+    const int ENTER_KEY = 10;
+    while( -1 != (x = if_.get()) && x != ENTER_KEY ){
+        sb += x; 
+    }
+
+    if_.close(); 
+
+    cout << "---"<< sb << "---"<<endl;    // need chomp 
+    __P__; // system("pause");
+    return 0;
+} // end main()
+
+// to_string_() write_buf_2_file()
+#define OF_W (ios::out|ios::trunc)
+
+template<typename T>
+string to_string_(T n){
+    ostringstream ss; 
+    ss << n ;
+    return ss.str();
+}
+
+void write_buf_2_file(const string & fn, unsigned char* buf , int rows, int cols){
+   
+    
+    // #define OF_W (ios::out|ios::trunc)
+
+    int i = 0; 
+    int j = 0;
+    string sb = ""; 
+    for(i=0;i<rows;i++){
+        for(j=0;j<cols;j++){
+            //buf[i*cols+j] = (i+j)%255; 
+            unsigned char t = buf[i*cols+j]; 
+            sb += to_string_( (int)(t) );
+            sb += " ";
+        }
+        sb += "\n"; 
+    }
+
+    ofstream of_(fn, OF_W); 
+
+    of_ << sb << endl; 
+
+    of_.close(); 
+
+}
+
