@@ -2616,6 +2616,7 @@ void write_buf_2_file(const string & fn, unsigned char* buf , int rows, int cols
     ofstream of_(fn, OF_W); 
 
     of_ << sb << endl; 
+	of_.flush();
 
     of_.close(); 
 
