@@ -2586,39 +2586,51 @@ int _tmain(int argc, char** argv)
 } // end main()
 
 // to_string_() write_buf_2_file()
+//#include <thread>
+//#include <chrono>
+//#include <atomic>
+#ifdef _MSC_VER
+  #include <Windows.h>
+#endif
+#include <cstdarg>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <vector>
+#include <iterator>
+//#include <opencv2/opencv.hpp>
+using namespace std; 
 #define OF_W (ios::out|ios::trunc)
-
 template<typename T>
 string to_string_(T n){
-    ostringstream ss; 
-    ss << n ;
-    return ss.str();
+	ostringstream ss; 
+	ss << n ;
+	return ss.str();
 }
-
 void write_buf_2_file(const string & fn, unsigned char* buf , int rows, int cols){
-   
-    
-    // #define OF_W (ios::out|ios::trunc)
-
-    int i = 0; 
-    int j = 0;
-    string sb = ""; 
-    for(i=0;i<rows;i++){
-        for(j=0;j<cols;j++){
-            //buf[i*cols+j] = (i+j)%255; 
-            unsigned char t = buf[i*cols+j]; 
-            sb += to_string_( (int)(t) );
-            sb += " ";
-        }
-        sb += "\n"; 
-    }
-
-    ofstream of_(fn, OF_W); 
-
-    of_ << sb << endl; 
+	// #define OF_W (ios::out|ios::trunc)
+	int i = 0; 
+	int j = 0;
+	string sb = ""; 
+	for(i=0;i<rows;i++){
+		for(j=0;j<cols;j++){
+			//buf[i*cols+j] = (i+j)%255; 
+			unsigned char t = buf[i*cols+j]; 
+			sb += to_string_( (int)(t) );
+			sb += " ";
+		}
+		sb += "\n"; 
+	}
+	ofstream of_(fn.c_str(), OF_W); 
+	of_ << sb ; 
 	of_.flush();
-
-    of_.close(); 
-
-}
+	of_.close(); 
+} 
+#define  JD_LOGE_9(STR) \
+	static int cnt_9 = 0; \
+if ( cnt_9++ == 0 ){ \
+	LOGE("--- JD LOG_9 %s: function:%s, line:%d----",STR,  __FUNCTION__, __LINE__); \
+} \
+; 
 
