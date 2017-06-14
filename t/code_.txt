@@ -2634,9 +2634,13 @@ if ( cnt_9++ == 0 ){ \
 } \
 ; 
 
+
+//perl append 
+open my $FP, ">>$FN";
+close $FP;
+// g++ -std=c++11 setenv.cpp  && time ./a.out
 // setenv 
 // perl -e 
-// g++ -std=c++11 setenv.cpp  && time ./a.out
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -2649,43 +2653,33 @@ if ( cnt_9++ == 0 ){ \
 
 int main() {
 
-	int a[1000] = { 0 };
-	for (auto i : a) {
-		putenv((char*)(
-			"abc=abcvarEND2"
-			));
-	}
+                putenv((char*)(
+                     "abc=abcvarEND2 "
+                     ));
 
 
 #ifdef _MSC_VER 
-	system(
-		" perl -e \" \
-			;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; \
-			print @ENV{abc}x2; 				\
-			;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; \
-			\"  "
-	);
+        system(
+                " perl -e \" \
+                     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; \
+                     print @ENV{abc}x2;                                 \
+                     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; \
+                     \"  "
+        );
 #else 
-	system(
-		" perl -e ' \
-			;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; \
-			print @ENV{abc}x2;				\
-			;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; \
-			' "
-	);
+        system(
+                " perl -e \' \
+                     $_______________________________; \
+                     print @ENV{abc}x2; \
+                     print @ENV{abc}x2; \
+                     print @ENV{abc}x2; \
+                     print @ENV{abc}x2; \
+                     $_______________________________; \
+                     \'  "
+        );
 #endif 
 
+return 0; 
 
-
-
-
-
-
-
-	return 0;
 }
 
-
-//perl append 
-open my $FP, ">>$FN";
-close $FP;
