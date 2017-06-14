@@ -2704,3 +2704,14 @@ done
 
 exit 0
 
+// shell bash perl
+#!bash 
+
+
+perl -e '  
+### perl start ###
+        @a=(0..9); 
+        print "@a" x 5;
+### perl end ###
+'  > txt.txt 
+
