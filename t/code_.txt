@@ -2683,3 +2683,24 @@ return 0;
 
 }
 
+# !/bin/bash
+export now=`date "+%Y%m%d_%H%M"`
+#echo cur pid is $$ 
+
+export out_file=cpu_perc_${now}.txt
+
+export PID0_PID1=$( pgrep -f watchdog.py | perl -e ' map{chomp; my @t=`ps af |grep $_`; @t = grep m/\\_ \./,@t; $_=@t[0];@tt0=split; $_=@t[1]; @tt1=split; print @tt0[0], " ", @tt1[0]; }<>'  )
+#echo ${PID0_PID1}
+
+
+while true;do
+        export  now=`date "+%Y%m%d_%H%M"`
+        perl -e ' open $FP, ">>@ENV{out_file}";  $now=@ENV{now};   $_=@ENV{PID0_PID1}; @t=split; map{ @top_log=`top -b -p @t[$_] -n 1`;   $_= @top_log[-1]; @pid_cpu=split;$w=qq($now,@pid_cpu[11]=@pid_cpu[8],); print $w; print $FP $w;}(0..1);  print qq(\n); print $FP qq(\n); close $FP;   '
+        sleep 5s
+done
+
+
+
+
+exit 0
+
