@@ -2715,3 +2715,69 @@ perl -e '
 ### perl end ###
 '  > txt.txt 
 
+#!perl
+use strict ;
+### global var ###
+my $roi_idx = 2; 
+my $filter_num = 144.00;
+##################
+my @arr_content = (); 
+die "- no argv, please run\n\tperl test.PL cpu_perc_3082_20170614.txt\n" if  @ARGV == 0; 
+q( 
+####### filename ######## 
+"                        "
+DATA :
+20170614_2346,tmpdata=212.8,20170614_2346,sonogui=6.647,  
+20170615_0210,tmpdata=19.6,20170615_0210,sonogui=6.634,
+20170615_0210,tmpdata=199.6,20170615_0210,sonogui=6.634,
+"                        "
+##########################
+); 
+
+my $filename = @ARGV[0] ; 
+@arr_content = `cat $filename| grep 2017`;
+@arr_content = 	sort { &parse_roi_num($a) <=> &parse_roi_num($b) }   @arr_content ; 
+@arr_content = &filter_ascend_arr_by_cond(\@arr_content, $filter_num);
+my @arr_to_av = &get_out_roi_arr(\@arr_content); 
+my $len = @arr_to_av; 
+my $average_num = &aver(\@arr_to_av); 
+print qq(\$average_num of \$len $len is $average_num \n); 
+
+
+
+
+### sub list ### 
+sub get_out_roi_arr(\@){
+	my $addr = shift @_;
+	my @arr_ret = (); 
+	for my $e (@$addr) {
+		push @arr_ret , &parse_roi_num($e);
+	}
+	return @arr_ret ; 
+}
+sub filter_ascend_arr_by_cond(\@ $){
+	my $addr = shift @_; 
+	my $filter_num = shift @_; 
+	my $cnt = 0; 
+	while(1){
+		my $__ = @$addr[$cnt++] ; 
+		last if &parse_roi_num($__) > $filter_num; 
+	}
+	my $len = @$addr;
+	my @arr_content = @$addr[ $cnt..$len-1] ; 
+	return @arr_content; 
+}
+sub parse_roi_num(){
+	my $line = shift @_;
+	my @t = split m/[\,\=]/, $line; 
+	return @t[$roi_idx];
+}
+sub aver(\@){
+	my $addr = shift @_;
+	my $len = @$addr ; 
+	my $sum =0; 
+	for my $e (@$addr) {
+		$sum += $e; 
+	}
+	return $sum/$len;
+}
