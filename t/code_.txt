@@ -2781,3 +2781,108 @@ sub aver(\@){
 	}
 	return $sum/$len;
 }
+
+
+// read file to uchar buf , and show as img 
+using namespace std;
+
+
+
+#define OF_W (ios::out|ios::trunc)
+#define IF_R (ios::in)
+
+
+
+
+template<typename T>
+string to_string_(T n){
+    ostringstream ss; 
+    ss << n ;
+    return ss.str();
+}
+void write_buf_2_file(const string & fn, unsigned char* buf , int rows, int cols){
+
+
+    // #define OF_W (ios::out|ios::trunc)
+
+    int i = 0; 
+    int j = 0;
+    string sb = ""; 
+    for(i=0;i<rows;i++){
+        for(j=0;j<cols;j++){
+            //buf[i*cols+j] = (i+j)%255; 
+            unsigned char t = buf[i*cols+j]; 
+            sb += to_string_( (int)(t) );
+            sb += " ";
+        }
+        sb += "\n"; 
+    }
+
+    ofstream of_(fn, OF_W); 
+
+    of_ << sb ; 
+    of_.flush(); 
+
+    of_.close(); 
+
+}
+
+
+
+
+int _tmain(int argc, char** argv)
+{
+
+
+    const int rows = 512; 
+    const int cols = 590; 
+    unsigned char buf[rows*cols] = {0}; 
+    int  a = 0; 
+
+    int cnt = 0; 
+
+    double Time = (double)cvGetTickCount();
+
+    ifstream if_( "x:\\512x590_imgdata.txt" , IF_R ); 
+    // filecontent is: 512*590 : 121 55 22 0 9 
+    //ifstream if_( "x:\\txt.txt" , IF_R ); 
+    while( 1 ){
+        if_ >> a ; 
+        if (if_.eof()) break;
+        buf[cnt++] = (uchar)a; 
+        //printf( "%d \n", a); 
+    }
+    if_.close(); 
+
+
+    Time = (double)cvGetTickCount() - Time;
+
+    printf( "run time = %gms\n", Time /(cvGetTickFrequency()*1000) );
+
+    cout<< to_string_(int(buf[ rows*cols-6 ])) ;  
+
+    Mat id_m(rows, cols, CV_8UC1); 
+    int cntt = 0; 
+    for( int i=0;i<rows;i++){
+        for( int j=0;j<cols;j++){
+            auto &t = id_m.row(i).col(j).data[0];
+            t = buf[cntt++];    
+        }
+    }
+
+
+    imshow( "id_m", id_m); 
+
+    imwrite( "x:\\id_m.bmp", id_m); 
+    waitKey(0);
+
+    __P__; // system("pause");
+    return 0;
+} // end main()
+
+
+
+
+
+
+///////
