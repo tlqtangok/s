@@ -2926,3 +2926,56 @@ int _tmain(int argc, char** argv)
     return 0;
 } // end main()
 
+// perl get_timestamp 
+#!perl
+
+print &get_timestamp(); 
+
+
+
+
+
+
+
+### sub list ### 
+### perl timestamp ### 
+
+sub add_zero_if_lt_10($){
+	my $num = shift @_; 
+	if ($num >=10 ){
+		return "$num" 
+	}
+	return "0$num"; 
+}
+sub get_timestamp(){
+
+# perl get time, for second:
+ #perl -e 'print $^T '
+#1477400615
+my $if_windows = "False"; 
+$if_windows = "True" if @ENV{WINDIR}; 
+
+
+    my $time_stamp = `date "+%Y%m%d_%H%M"` if $if_windows ne "True"; 
+
+    if ( $if_windows eq "True"){
+        my ($second, $minute, $hour, $date, $month, $yearOffset, $dayOfWeek, $dayOfYear, $daylightSavings) = localtime();
+        # 17 16 20 24 7 116 3 236 1
+        # 2016-08-24 20:16
+
+        my $year = 1900 + $yearOffset;
+        $month = $month + 1 ; 
+        $month = &add_zero_if_lt_10($month); 
+        $date = &add_zero_if_lt_10($date); 
+        $hour = &add_zero_if_lt_10($hour); 
+        $minute = &add_zero_if_lt_10($minute); 
+        $time_stamp = "$year$month${date}_${hour}$minute"; 
+    }
+
+    chomp( $time_stamp ); 
+    my $suffix_ = ""; 
+    return "$suffix_".$time_stamp; 
+
+}
+
+
