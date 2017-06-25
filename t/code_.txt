@@ -2981,3 +2981,18 @@ $if_windows = "True" if @ENV{WINDIR};
 
 EOF
 
+/*
+// move to another header file 
+#define TO_STRING_  string to_string_(T tt) { \
+stringstream ss; \
+ss << tt; \
+cout << ss.str(); \
+return ss.str(); \
+} \
+;
+#define S(x) to_string_((int)(x))
+*/
+
+template <typename T> TO_STRING_;    // to use to_string_(id_m)
+
+
