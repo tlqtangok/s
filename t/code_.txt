@@ -2996,3 +2996,30 @@ return ss.str(); \
 template <typename T> TO_STRING_;    // to use to_string_(id_m)
 
 
+#include <stdlib.h>
+#include <stdio.h>
+
+#ifdef _MSC_VER 
+#define putenv _putenv
+#endif
+
+
+
+#define M_PI       3.14159265358979323846
+int _tmain(int argc, char** argv)
+{
+ 
+    int n = 99; 
+    char *env_n="env_n"; 
+    string id_ss = string(env_n) + string("=") + S_( (int)&n ) ; 
+    putenv( id_ss.c_str() ); 
+
+  
+
+    int *naddr =(int*) atoi(  getenv(env_n)  ); 
+    int n_new = naddr[0]; 
+    //cout << n_new << endl;  // => 99
+
+    naddr[0] = 999; 
+    cout << n << endl;  // => 999 
+
