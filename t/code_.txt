@@ -3023,3 +3023,10 @@ int _tmain(int argc, char** argv)
     naddr[0] = 999; 
     cout << n << endl;  // => 999 
 
+
+// mutex 
+pthread_mutex_t mutex[DMA_NUM];
+	    pthread_mutex_lock( &mutex[info.dma_no] );
+	    ret = Do_sth(PiqHandle, &data);
+	    pthread_mutex_unlock( &mutex[info.dma_no] );
+		pthread_mutex_destroy(&mutex[i]);
