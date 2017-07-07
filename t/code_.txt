@@ -3030,3 +3030,6 @@ pthread_mutex_t mutex[DMA_NUM];
 	    ret = Do_sth(PiqHandle, &data);
 	    pthread_mutex_unlock( &mutex[info.dma_no] );
 		pthread_mutex_destroy(&mutex[i]);
+    ifstream vfile("CFMdata/config.ini");
+    
+    if (vfile.is_open())
