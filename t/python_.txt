@@ -1,0 +1,459 @@
+#cat /qftest/jd_qf_test_0.qft -n |grep -v _name\=\"|grep -v \#|grep -v rc.|grep procedure_|grep -v '('
+
+#------qftest templates------
+
+import os;
+import re;
+import random
+#---
+def m(id_text, id_match):
+    ret_v=False
+    if re.search( id_match,id_text):
+        ret_v=True  
+    return ret_v
+#---  
+#import os 
+
+def SP(): return os.path.sep   
+def get_clipboard():id_text=rc.callProcedure("qfs.utils.clipboard.getTextFromClipboard", {} );  return id_text; 
+def simple_call(id_procedure_name): rc.callProcedure(id_procedure_name,{})
+def env(id_it): return rc.lookup(id_it);                       # rc.lookup("id_name");  is string
+def set_global_var(id_name,value):return rc.setGlobal(id_name, value);     # rc.setGlobal("id_name",id_name );
+def set_local_var(id_name,value): return rc.setLocal(id_name, value);      # rc.setLocal("itemCount", itemCount);
+def local_var(id_name,value): return set_local_var(id_name, value);  
+def var(id_name,value): return set_local_var(id_name, value);     
+def get_id(id_name): return rc.getComponent(id_name);              # rc.getComponent("id_name");
+def t(id_name):return get_id(id_name).getText()  
+def get_item(id_name): return get_id(id_name).getItems();
+def sleep(time_to_sleep=4000):rc.callProcedure("qfs.utils.sleep", {'sleeptime': time_to_sleep} )                # rc.getComponent("id_name").getItems();
+def ex_(id_msg):print id_msg;rc.check(False,id_msg,rc.EXCEPTION )
+def Date():return rc.callProcedure("qfs.utils.getDate",{'format':'yyyyMMdd'})
+def Time():return rc.callProcedure("qfs.utils.getTime", {'format':'HHmmss'} )
+def chomp(id_str):return id_str.strip();
+def parse_right_value(id_k_v):return chomp(re.split("\=",id_k_v)[1]);
+def read_file_to_arr( id_filename): file = open(id_filename);lines = file.readlines();file.close(); return lines;
+def write_msg_to_file(id_text,filename): fp = open(filename,'w');fp.writelines(id_text);fp.flush();fp.close()    #"c:\\txt.txt"
+def run_bat(id_cmd):os.system(id_cmd)
+def append_text_to_file(id_text,id_filename): out = open(id_filename, 'a');out.write(id_text);out.close()
+def rnd(id_int_a):import random; return random.randint(0,id_int_a-1)
+#------
+
+### libs ### 
+def id_project_name_create(id_core_family_name,id_tcf_name, id_need_suffix=True):
+    id_core_family_name=id_core_family_name.lower()
+    id_core_family_name=id_core_family_name.replace(" ","",10)
+    id_tcf_name=id_tcf_name.replace(".tcf","")
+    date_time_suffix=Date()+"_"+Time()
+    if not id_need_suffix:date_time_suffix=""
+#short id_core_name
+    id_ec_msg="no such a" ,id_core_family_name
+    if re.search(r"em",id_core_family_name):id_core_family_name="em"
+    elif re.search(r"hs",id_core_family_name):id_core_family_name="hs"
+    elif re.search(r"600",id_core_family_name):id_core_family_name="a6"
+    elif re.search(r"601",id_core_family_name):id_core_family_name="a601"
+    elif re.search("700",id_core_family_name):id_core_family_name="a7"
+    else: exception(id_ec_msg)
+    id_project_name=id_core_family_name+"_"+id_tcf_name+"_"+date_time_suffix
+    return id_project_name
+
+
+
+def read_file_to_arr_grep_by_pattern( id_filename, id_match):
+    lines_to_return=[5]
+    line_cnt=0
+    lines=read_file_to_arr(id_filename)
+    for id_line_each in lines:
+        if re.search(id_match,id_line_each):
+            lines_to_return[line_cnt]=id_line_each; line_cnt+=1;
+    return lines_to_return
+
+def from_tcfname_to_core_name(id_tcfname):
+    id_path=r'C:\ARC\MetaWare\arc\tcf'
+    os.chdir(id_path)  
+    id_arr_file_all= os.listdir( os.getcwd());
+    id_match=r"processor.family_name\="
+    id_cnt=0;
+    x=read_file_to_arr_grep_by_pattern( id_tcfname,id_match )
+    return parse_right_value(x[0] )
+#end def 
+
+
+
+http://sp-sg/sites/arc_automation/SitePages/QF-Test/Users.aspx a short guide 
+
+Extras -> quickguide -> add exe ; 
+cml  qf-test:
+    > qftest -batch -run c:\tmp\+b  "%qf_pro%\qf_test_installer.qft"
+de.qfs.lib.command.RuntimeCommandException: 
+C:\Program Files (x86)\qfs\qftest\qftest-4.0.4\helptest\qf_test_installer.qft (The system cannot find the path specified)
+
+my script to get all the global vars 
+cat -n '/cygdrive/c/Users/linqi/Desktop/latest_mayson_QF-Test TC_12 project/QF-Test project/jd_test.qft'|grep var\(|grep -v def|grep -v comment|grep -v name=    
+${env:HOME}    # to get env var in qftest 
+
+def var=rc.lookup('myvar_0')
+println "$var"
+
+---Jython_ python_ ---
+
+-python dict or hash 
+id_hash = {} 
+id_hash[id_text] = id_hash.setdefault(id_text, 0) + 1
+id_hash.keys()
+my_arr = id_hash.keys()
+my_arr.sort() 
+id_len = len( my_arr ) 
+print my_arr
+-
+import os , stat 
+os.chmod('txt.txt', stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)        # python change to 0777 
+-
+os.environ["PATH"]    # get env 
+-
+finish the script:     os._exit()
+-
+python copy 
+shutil.copytree(src_dir,dst_dir) 
+shutil.copyfile(src_file,dst_file_path)
+-
+-python run cmd and get result---
+ret_value = os.popen(run_perl_cml).readlines()
+-
+-remove u'' from unicode string- 
+import urllib
+global id_g_ret_str
+id_g_ret_str.append( urllib.unquote(str(id_text)).decode('utf8') )
+-
+id_s_hs38_lcf os.path.getsize(os.path.join(os.getcwd(),"hs38.lcf"))    # get size , and join path 
+-join-
+arr_core_name = [ "hs", "em", "600", "700", "601"]
+str_core_name = "|".join(arr_core_name)
+-
+
+id_name="panelTool_Settings.panel"
+id_name=get_id(id_name).getChildren()
+#id_name=id_name.getVisible()
+id_name=id_name[1].getSelection()
+
+
+---try exception 
+id_cnt=0
+while True:
+    try:
+        com = rc.getComponent("buttonOk3");
+    except ComponentNotFoundException:
+        sleep();
+        if id_cnt==0:    print "wait for buttonOk3...";
+        pass
+    break
+-
+-global var-
+# file1
+global globalVar
+globalVar = [1,2,3,4,5]
+# file2 
+global globalVar
+print globalVar
+-
+
+---check---
+rc.check(id_text == 2, "!Value of var is 0")
+-
+
+---read and write---
+id_text= \
+"""
+hello boy
+do u love me?
+"""
+fp = open("test.txt",'w')
+
+fp.writelines(id_text)
+fp.flush();
+fp.close()
+
+fp=open("test.txt", 'r')
+id_list=fp.readlines()
+fp.close()
+print id_list[1]; 
+-
+rc.callProcedure("proc_test_0", {'id_p_0': 101} )    # 101 will overwrite the default one 
+rc.callProcedure("create_project_based_on_core_index_tcf_index", {'id_core_family_index': 2, 'id_tcf_index':0} )
+id_text=rc.callProcedure("qfs.utils.clipboard.getTextFromClipboard", {} )
+-
+import re
+text = "JGood is a handsome boy, he is cool, clever, {and} so on..."        # get {and} + and 
+num = re.sub(r'D', "", phone)  
+m = re.search(r"(iccm\d?_base\=\w+?) ", id_text)
+if m:
+    print m.group(1)+"---"     #  groups()
+else:
+    print 'not match'  
+-
+-for_ -
+for i in range(2):    # 0 1 2 
+    #print 
+-
+# for table 
+id_name="CProjectWizard2.listARChitect-generated_Tool_Configuration_File"
+id_tcf_panel=get_item(id_name);
+id_num_of_tcf_foreach=len(id_tcf_panel)
+print id_num_of_tcf_foreach
+for i in range(id_num_of_tcf_foreach):     print get_item(id_name)[i]; 
+
+print "click core family "+ str(id_click_on_which_core_family) +" "+ id_click_core_family_name.toString()
+print "click core family", id_click_on_which_core_family ,  id_click_core_family_name
+
+
+-if_-
+#  condition on GUI: $(em_flag)==1     $(id_it) == 0
+# if  condition on GUI:  ($(id_it) == 0 ) or (t
+)
+em_flag=0;
+if  id_text == "ARC EM Generic":
+    em_flag=1;
+rc.setLocal("em_flag",em_flag);
+-
+fetch text , fill the varable -> 
+id_text=rc.lookup("name_fetched_from_core_family");
+print id_text ; 
+-
+x=[1,2];
+print x[0];
+
+-array-
+from jarray import zeros, array;
+x=array([1,2,3],int);
+print x[1];
+
+-re-
+import re;
+x=re.split('\W+', 'Words, words, words.');
+print x; 
+x=re.sub(r'R0',r'_substitute_R0_',r'bR0g');
+s=re.sub(r'_field_', arr[cnt] ,s);
+
+print x;
+
+-int()-
+x=int("33");
+x+=67;
+s=("Hello %i" % (arr_record[cnt2]));   # covert int to string
+a=str(444);
+a=a+"ssss"; 
+
+
+#-whole code-
+import re;
+cnt_i=rc.lookup("i"); 
+cnt_j=rc.lookup("j"); 
+cnt_i=int(cnt_i);
+cnt_j=int(cnt_j);
+arr_col=["Last Name","First Name","Business Phone","Home Phone","Email","Fax"];
+arr_row=["0","1","2"];
+s_R0=r'Table@_col_&_row_';
+s=s_R0;
+s=re.sub(r'_col_',arr_col[cnt_i],s);
+s=re.sub(r'_row_',arr_row[cnt_j],s);print "s: ",s;
+rc.setGlobal("id_name", s);
+#-
+
+-file read-
+ file = open(filestr)      # access file for read
+    lines = file.readlines()  # get the file
+    file.close()
+
+f = open("myfile", "w")
+for i in range(10):
+    print >>f, "Line", i
+f.close()
+#
+
+# get Table propriety:  getComponent ; 
+(tb,(col, row))=rc.getComponent("Table@First Name&0");
+print tb, col, row;
+-
+tb=rc.getComponent("tableTipA_Toolchain_is_a_set_of_tools2");
+item=tb.getItemCount();
+item_name=tb.getItems();
+print "the len of :len():",len(item_name);
+-
+
+table=rc.getComponent("Table");    # table,(row,col)=rc.getComponent("Table%E.*l&2");  
+rowCount = table.getItemCount();
+colCount=table.getColumnCount();
+print rowCount, colCount;
+
+
+
+---from qft.qft---
+  from java.io import File
+  from java.lang import System
+  import autowin
+  import jarray
+  from com.jniwrapper import UInt32, AnsiString, Parameter, Function
+  from com.jniwrapper.win32.ui import User32
+  from com.jniwrapper.win32.ui import Wnd
+  from com.jniwrapper.win32 import Msg
+  from com.jniwrapper import Library
+  from array import array
+  import time
+
+fileName = rc.lookup("fileName").replace("/","\\")
+rc.getInt("windowtimer")
+
+aFile = File(fileName)
+fileName = aFile.getAbsolutePath()
+
+---if_ else---
+/////// cat my_jython_code.log -n |less
+if aFile.exists():
+   628     if not rc.getBool("overwriteExistingFile"):
+   629        raise UserException("File already exists.\nPlease set the parameter overwriteExistingFile=true if you want to overwrite the file")
+   630     else:
+   631        #delete existing file
+   632        rc.callProcedure("qfs.shellutils.deleteFile", {"file":fileName})
+
+
+ rc.logError("The save-operation took longer than the timeout set.")
+time.sleep(savetimer)
+ rc.logMessage("abr: %s" % abr)
+
+oneMenu = menubar.getMenu(i)
+table = rc.getComponent(rc.lookup("id"))
+
+parts = text.split(newline)
+  5851  rc.setLocal("iterations", len(parts))
+
+print cell, cell.getTreeItem()
+
+ tree, itemIdx = rc.getComponent(ID)
+ items = mylist.getItemCount()
+
+table, item = rc.getComponent(rc.lookup("id"))
+ 14469  row = item[1]
+ 14470  tableItem = table.getItem(row)
+ 14471  tableItem.setChecked(True)
+
+item = rc.getComponent(ID)[1]
+item.getParentItem()
+
+ allGlobals = rc.getGlobals().clone()
+now = System.currentTimeMillis()
+
+ limit = float(rc.lookup("errorLimit"))
+  iCount = node.getChildCount()
+node.getChild(index).getSimpleText()
+text.replace(newline, "\n")
+!line1.endsWith("hs_stack_protect.elf: Process created")
+lines = text.getText().replace("\r\n", "\n").split("\n")
+
+try:
+    com = rc.getComponent("someId")
+except ComponentNotFoundException:
+    ...
+
+raise UserException("Some arbitrary message") 
+
+
+for id_file_of in range(10):
+    id_file_of=id_arr_file_all[id_file_of]
+    id_core_family_name=from_tcfname_to_core_name(id_file_of)
+    id_tcf_name=id_file_of;
+    #print (id_core_family_name, id_tcf_name)
+    #rc.callProcedure("create_a_project_with_p0_id_core_family_name_p1_id_tcf_name",{'id_core_family_name':id_core_family_name,'id_tcf_name':id_tcf_name} )
+    #sleep(100)
+sleep(1111)
+
+### libs ###
+id_name="panelTool_Settings.panel"
+id_name=get_id(id_name).getChildren()
+
+
+
+return_id=0
+for id_ in id_name:
+    #print "the " , i , "is" , id_; i+=1;
+    if re.search(r"dsp2",id_.toString()):
+        return_id=id_
+        break
+print "xxy:", return_id.getEnabled()
+print return_id
+
+return_id.setSelection(True)
+sleep()
+return_id.setSelection(False)
+#------------------------
+
+
+i=0
+
+
+return_id=0
+for id_ in id_name:
+    #print "the " , i , "is" , id_; i+=1;
+    if re.search(r"\-Xxy",id_.toString()):
+        return_id=id_
+        break
+print "xxy:", return_id.getSelection()
+print return_id
+
+
+
+
+
+
+return_id=0
+for id_ in id_name:
+    #print "the " , i , "is" , id_; i+=1;
+    if re.search(r"dsp_divsqrt",id_.toString()):
+        return_id=id_
+        break
+print "dsp_divsqrt:" , return_id.getEnabled()
+print return_id
+
+#id_name=id_name.getVisible()
+#id_name=id_name[1].getSelection()
+
+
+
+#print id_name
+
+fh = open(rc.lookup("file"), "r")
+text = fh.read()
+fh.close()
+raise ReturnException(text)
+
+
+
+def String args_directory=rc.lookup("mide","args_directory1")+rc.lookup("mide","username")+rc.lookup("mide","args_directory2");
+
+os.getcwd()
+os.chdir(dstDir)
+rc.getLastItem()
+rc.getLastComponent()
+
+tcf_dir = rc.lookup("mide", "tcf_workspace")        #get from mide prop file 
+
+import os
+import platform
+hostOS = platform.system()
+
+SP=os.path.sep
+histfile = os.path.join(os.environ['HOME'], '.pythonhistory') 
+"".join(some_arr)
+
+    id_match = r".*\<\!\[CDATA\["
+    id_str = re.sub(id_match, "" , id_str)
+os.path.dirname(__file__)
+os.path.basename(_file_); 
+
+root = "/remote/us01home41/linqi/share/ws"
+import os;
+for path, subdirs, files in os.walk(root):
+    for name in files:
+        print (os.path.join(path, name))
+
+b = q     #file?
+b = os.path.isdir( "your_path")     #folder directory
+
