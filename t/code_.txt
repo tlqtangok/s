@@ -3033,3 +3033,22 @@ pthread_mutex_t mutex[DMA_NUM];
     ifstream vfile("CFMdata/config.ini");
     
     if (vfile.is_open())
+
+
+#c is file  exist 
+    while(1){
+// #include <io.h>
+        if ( _access( "x:\\txt.txt", 0 ) != -1 ){
+            cout << "- _access exist " << endl; 
+        }
+
+        ifstream if_("x:\\txt.txt", F_R); 
+
+        if ( if_.is_open() ){
+            cout << "- ifstream exist " << endl; 
+        }
+        if_.close();
+        cout << "- sleep 2s\n"; 
+        Sleep(2000);
+    }
+
