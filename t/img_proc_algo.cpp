@@ -353,6 +353,57 @@ void strong_img_gt_1_then_255(Mat& id_m){
 
 }
 
+string diff_int8_img_and_return_report(int8_t *img0, int8_t *img1, int rows, int cols){
+    //  string id_s = KImgApi::diff_int8_img_and_return_report(m_DPcache0, m_DPcache1, rows, cols);
+    //  KImgApi::fcout ( id_s , 1111 ); 
+    int cnt = 0;
+
+    int sum = 0; 
+    string id_s = ""; 
+    for ( int i=0;i<rows;i++){
+        for (int j=0;j<cols;j++){
+            int d = abs( img0[i*cols + j] - img1[i*cols + j] ); 
+
+            if ( d != 0){
+                id_s += S_( i ) + " " + S_( j ) + " " + S_( img0[i*cols + j] ) + " " + S_( img1[i*cols + j] ) + "\n" ; 
+                sum += d; 
+                cnt++;    
+            } // end if()
+        } // end for j
+
+    } // end for i
+
+
+    id_s += string("- sum I(i,j):" ) + " " + S_(sum) + "\n"; 
+    id_s += string("- error rate:") + " " + to_string_( (float)( cnt * 1.0f /(rows*cols) ) ) + "\n"; 
+
+    return id_s; 
+}
+
+string diff_uint8_img_and_return_report(uint8_t *img0, uint8_t *img1, int rows, int cols){
+    int cnt = 0;
+
+    int sum = 0; 
+    string id_s = ""; 
+    for ( int i=0;i<rows;i++){
+        for (int j=0;j<cols;j++){
+            int d = abs( img0[i*cols + j] - img1[i*cols + j] ); 
+
+            if ( d != 0){
+                id_s += S_( i ) + " " + S_( j ) + " " + S_( img0[i*cols + j] ) + " " + S_( img1[i*cols + j] ) + "\n" ; 
+                sum += d; 
+                cnt++;    
+            } // end if()
+        } // end for j
+
+    } // end for i
+
+
+    id_s += string("- sum I(i,j):" ) + " " + S_(sum) + "\n"; 
+    id_s += string("- error rate:") + " " + to_string_( (float)( cnt * 1.0f /(rows*cols) ) ) + "\n"; 
+
+    return id_s; 
+}
 
 
 vector<string>  cal_img_diff_and_accumuate(Mat& id_m){
@@ -724,7 +775,7 @@ cv::Mat cvt_uchar_buf_2_mat(uchar* pData, int rows_, int cols_)
     return id_mt;
 }
 
-void write_buf_2_file(const string & fn, unsigned char* buf , int rows, int cols){
+void write_buf_2_file_2d(const string & fn, unsigned char* buf , int rows, int cols){
 
 
     //#define F_W (ios::out|ios::trunc)
@@ -736,6 +787,33 @@ void write_buf_2_file(const string & fn, unsigned char* buf , int rows, int cols
         for(j=0;j<cols;j++){
             //buf[i*cols+j] = (i+j)%255; 
             unsigned char t = buf[i*cols+j]; 
+            sb += to_string_( (int)(t) );
+            sb += " ";
+        }
+        sb += "\n"; 
+    }
+
+    ofstream of_(fn, F_W); 
+
+    of_ << sb ; 
+    of_.flush(); 
+
+    of_.close(); 
+
+}
+
+void write_int8_buf_2_file_2d(const string & fn, int8_t* buf , int rows, int cols){
+
+
+    //#define F_W (ios::out|ios::trunc)
+
+    int i = 0; 
+    int j = 0;
+    string sb = ""; 
+    for(i=0;i<rows;i++){
+        for(j=0;j<cols;j++){
+            //buf[i*cols+j] = (i+j)%255; 
+            int8_t t = buf[i*cols+j]; 
             sb += to_string_( (int)(t) );
             sb += " ";
         }

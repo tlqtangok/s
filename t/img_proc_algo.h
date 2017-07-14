@@ -43,8 +43,8 @@ vector<string> split_2_words(string& line);
 vector<string> read_file_2_vec_str_chomp(string filename);
 template<class T> vector<T> get_num_arr_from_string(const string& sb);
 string fcout(string id_s, int fn_idx);
-void write_buf_2_file(const string & fn, unsigned char* buf , int rows, int cols);
-
+void write_buf_2_file_2d(const string & fn, unsigned char* buf , int rows, int cols);
+void write_int8_buf_2_file_2d(const string & fn, int8_t* buf , int rows, int cols);
 /* end utilities */
 
 
@@ -72,6 +72,8 @@ void strong_img_gt_1_then_255(Mat& id_m);
 vector<string>  cal_img_diff_and_accumuate(Mat& id_m);
 void gradient_img_buf(unsigned char* buf , int rows, int cols, int split=20);  // here,we can define default param for interface 
 
+string diff_int8_img_and_return_report(int8_t *img0, int8_t *img1, int rows, int cols);
+string diff_uint8_img_and_return_report(uint8_t *img0, uint8_t *img1, int rows, int cols);
 float percent_of_correct_pixels( Mat& id_m32, Mat& id_m64);
 Mat get_rectangle_mat(Mat& id_m32, int start_rows,  int end_rows, int start_cols, int end_cols );
 Mat get_center( Mat id_m32 , int divide_scale=16 );
