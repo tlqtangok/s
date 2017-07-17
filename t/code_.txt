@@ -3052,3 +3052,74 @@ pthread_mutex_t mutex[DMA_NUM];
         Sleep(2000);
     }
 
+type txt.txt
+pwd
+[x, y] = size(id_m)
+
+-fprintf
+fp = fopen ( 'x:\\txt.txt', 'w'); 
+fprintf(fp, '%d', a);
+fprintf('%d\n',88)  %to stdout 
+t=sprintf('%d', 88)
+str2num(t)+1   % => 89
+fclose(fp);
+-
+% this will be :   1.0000000e+00   0.0000000e+00   0.0000000e+00
+save  a.txt  -ascii a   
+can use read_file_2_float_buf_1d() to read 
+
+-open close 
+function fcout(id_m, idx)
+% usage :
+% fcout( id_m , 1111 ) 
+% also can use "load xxxx_txt" or "loat xxx.txt" to load 
+% ==> x:\txt_1111_8_x_8_txt
+% === dlmwrite('x.txt', rand(9), ' ' )
+[r,c] = size(id_m);
+fn = sprintf( 'x:\\txt_%s_%0d_x_%0d_txt' , num2str(idx), r,c );
+fp = fopen(fn, 'w');
+
+for i=1:r
+    for j=1:c
+            fprintf( fp, '%d ', id_m(i,j) );
+    end
+    fprintf( fp, '\n' );
+end 
+disp(fn)
+-
+
+if 1 == 1 && 2 == 2
+  disp(1)
+end
+
+if 1 ~= 2 
+
+
+x(1:2,:)
+
+- a m file with different function 
+>> type t.m
+
+function tt=t(a)
+tt=t1(a)+t2(a);
+end
+
+function t1_=t1(a)
+t1_=a;
+end
+
+function t2_=t2(a)
+t2_=a;
+end
+-
+
+strcat( 'abc', '4' )
+-img 
+lena=imread('x:\\lena.bmp');
+lena(1:44,1:44) = 0; 
+imshow(lena);
+-
+
+
+
+
