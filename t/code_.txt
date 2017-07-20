@@ -3124,3 +3124,6 @@ imshow(lena);
 
 
 
+// cv mat new usage 
+Mat id_m = Mat( rows, cols, CV_8UC(1), pData, cols ); 
+
