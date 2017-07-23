@@ -4162,3 +4162,150 @@ https://github.com/junku901/machine_learning     # github nodejs machine learnin
 
 
 
+---dot_ ---
+dot -V
+dot -Tpng test.dot -o test.png & ecd test.png
+http://blog.jobbole.com/94472/  demo
+digraph "server"
+ {
+ graph["splines"="curved","overlap"="scalexy","rankdir"="LR"]
+ node["fontsize"="8px","fontname"="arial","shape"="rect","margin"=0,"pad"=0,"style"="solid"]
+ "1" -> "2" ;
+ }
+/* no direct */
+graph abc{
+a -- B;
+B -- a[color=red];
+}
+digraph abc{
+ "a b c" -> b;
+ b -> c;
+} 
+
+graph minimal_nonplanar_graphs {
+  size="9,19"
+
+  URL="http://en.wikipedia.org/wiki/Kuratowski_theorem#Kuratowski_subgraphs"
+  tooltip="click for \"Kuratowski theorem\""
+  JD="JD"
+  labelloc=t           
+  label="Minimal nonplanar graphs (9 edges / 5 nodes)"
+  node [style=filled]
+
+  subgraph cluster_0 {
+bgcolor="yellow";
+    label="K_3,3"  color=lightblue  style=filled
+    node [color=white]
+    {A B C} -- {D E F}
+  }
+
+  subgraph cluster_1 {
+    label=K_5  color=blue
+    node [color=yellow  shape=box]
+    1 -- {2 -- {3 -- {4 -- 5}}}
+    } 
+}
+
+graph minimal_nonplanar_graphs {
+  size = "8,8";
+  subgraph sub_0{
+    a [shape=box,fillcolor=green,/*style=dashed,*/style=filled];
+    b;
+    c;
+    d;
+    {a,b} -- {c,d};
+  }
+}
+digraph sub_0{
+  labelloc=t  
+  label="this is a label"
+  node [shape=record];  //rect
+  edge [style=dashed];  //虚线
+    a;
+    b;
+    c;
+    d [shape=none, image="t.png" , label=""];
+    a -> { b -> { c -> d[color=red] } } ;
+  }
+
+digraph abc{
+
+  node [shape="record"];
+  edge [style="dashed"];
+
+  a [style="filled", color="black", fillcolor="chartreuse"];
+  b;
+
+    subgraph cluster_cd{
+      label="c and d";
+      bgcolor="mintcream";
+      c;
+      d;
+    }
+
+  a -> b;
+  b -> d;
+  c -> d [color="red"];
+}
+//table 
+digraph abc {
+//rankdir=TB;
+node [shape=record,color="skyblue",];
+// node [shape="plaintext"]; 
+edge [];
+a;
+1;
+0 [shape=doublecircle , style=filled];
+A;
+a [label="
+{<a_>a|
+b|
+c}
+"];
+1 [label="1|<_2_>2|3|4"];
+A [label="A|B|C"];
+1:_2_ -> a:a_;
+1 -> A;
+  0 ->0 [label="fuck self",shape=diamond];  // shape = "Mrecord",   圆角矩形
+
+}
+
+-
+  rankdir = "TB";  // LR 
+  fontname = "Courier New"
+  fontsize = 100; // big picture
+
+  node [shape = doublecircle];
+  
+LR_0 LR_3 LR_4 LR_8; 
+-
+-time sequence-
+digraph G {
+size="10,10"
+rankdir = "LR";
+node [shape="point",width=0, height=0];
+edge [ arrowhead=none];
+
+{
+rank = "same";
+a[shape=plaintext]
+a -> a0 -> a1 -> a2 -> a3 -> a4; 
+}
+
+{
+
+rank = "same";
+b[shape=plaintext]
+
+b -> b0 -> b1 -> b2 -> b3 -> b4; 
+}
+
+edge[arrowhead=""];
+
+a0->b0;
+a1->b1;
+b2->a2;
+}
+-
+
+
