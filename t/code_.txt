@@ -3274,3 +3274,28 @@ b2->a2;
 -
 
 
+    //--- cv draw rotate rectangle 
+#define IMG_WIN_HEIGHT 820
+#define IMG_WIN_WIDTH 1130
+
+#define LINE_P_NUM 10000
+
+    const int rows =  IMG_WIN_HEIGHT;
+    const int cols =  IMG_WIN_WIDTH;
+
+    Mat id_m( rows, cols, 0); 
+    clear_img( id_m );
+
+    string id_s("");
+    RotatedRect rRect=RotatedRect(Point2f(cols/2,rows/2),Size2f(22,400),-30);
+    Point2f vertex[4];
+    rRect.points(vertex);//提取旋转矩形的四个角点
+    for(int i=0;i<4;i++)
+    {
+        id_s += to_string_(vertex[i].x) + " " + to_string_(vertex[i].y) + "\n";
+        line(id_m,vertex[i],vertex[(i+1)%4],Scalar(255));//四个角点连成线，最终形成旋转的矩形。
+    }
+
+    fcout( id_s , 1111);
+    show_mat(id_m);
+// end cv draw 
