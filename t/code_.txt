@@ -3299,3 +3299,22 @@ b2->a2;
     fcout( id_s , 1111);
     show_mat(id_m);
 // end cv draw 
+-
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
+using namespace std;
+
+int main(){
+
+const char *s= string("abc 12345 bcd").c_str();
+int a =0;
+sscanf(s, "abc %d", &a);
+cout << a<< endl;
+
+}
+
+
+
