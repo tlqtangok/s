@@ -3,15 +3,15 @@ outlook automatically reply email : File -> info -> automatically -> inside? out
 Youdao note Edit : ctrl +Tab can indent , shift +Tab restore indent ; 
 
 Eclipse : Ctrl + Shift + /  --- can comment a BLOCK;
-¢Ùctrl+shift+R¡¡open Resource :like .c
+â‘ ctrl+shift+Rã€€open Resource :like .c
 
-¢ÚFile->switch workspace 
+â‘¡File->switch workspace 
 
-¢Ûcygwin clr --ctrl + L 
+â‘¢cygwin clr --ctrl + L 
 
-¢Ü mcc link.cmd -g -Xtimer0 -arcv2em main.c interrupt.s -o main.out -m > main.map  ----How to compile in Cygwin?
+â‘£ mcc link.cmd -g -Xtimer0 -arcv2em main.c interrupt.s -o main.out -m > main.map  ----How to compile in Cygwin?
 ccac test.c -m  > txt.txt      # get default linker script 
-¢İvim C++ color highlight 
+â‘¤vim C++ color highlight 
 
  cp /usr/share/vim/vimXX/vimrc_example.vim ~/.vimrc ---- vimrc_example /usr/share/vim/vim74/vimrc_example.vim
 add:
@@ -27,12 +27,12 @@ set backspace=indent,eol,start
 
 OR 
 cp test.c $HOME/test5.c
-¢Ş ctrl+r , redo; 
+â‘¥ ctrl+r , redo; 
 
- ¢ß Ğ¡Êıµã£¬ÖØ¸´ÉÏÒ»´Î²Ù×÷£¬
-¢à shift + v, ¿éÑ¡£»
-¢á from system clipboard to  vim: shift + Insert ; 
- ¢â
+ â‘¦ å°æ•°ç‚¹ï¼Œé‡å¤ä¸Šä¸€æ¬¡æ“ä½œï¼Œ
+â‘§ shift + v, å—é€‰ï¼›
+â‘¨ from system clipboard to  vim: shift + Insert ; 
+ â‘©
 
 
 Haifeng Han (haifeng) is a new user and will need to run
@@ -66,7 +66,7 @@ http://url.cn/RZcWPN  Linux p4 CONFIG
 http://url.cn/RZcWPN p4 operate
 
 <TAB>//dwarc/Tools/nsim/2013.03/...<SPACE>//linqi/nsim201303/...
-°ÑshellÀàĞÍ»»³Ébash
+æŠŠshellç±»å‹æ¢æˆbash
 
 p4 -p p4p-`/usr/local/bin/siteid`:1900 passwd
 
@@ -76,12 +76,12 @@ You should also set your P4PORT to:
 export P4PORT="p4p-`/usr/local/bin/siteid`:1900" (sh/ksh/bash)
 p4 client
 
-CPUÑeî^º¬ÓĞÎ¢Ö¸Áî¼¯
-´ÅÖùÊÇ·Ö¸î²ÛµÄ×îĞ¡µ¥Î» £»
-Ö÷Òª·Ö¸îÓëÑÓÉì·Ö¸î×î¶à¿ÉÒÔÓĞËÄ±Ê(Ó²µúµÄÏŞÖÆ)
+CPUè£¡é ­å«æœ‰å¾®æŒ‡ä»¤é›†
+ç£æŸ±æ˜¯åˆ†å‰²æ§½çš„æœ€å°å•ä½ ï¼›
+ä¸»è¦åˆ†å‰²ä¸å»¶ä¼¸åˆ†å‰²æœ€å¤šå¯ä»¥æœ‰å››ç¬”(ç¡¬ç¢Ÿçš„é™åˆ¶)
 
-ĞÅºÅÁ¿ Óë »¥³âÁ¿ £­£­£­»ñµÃÓëÊÍ·ÅµÄÏß³Ì²»Ò»Ñù
-ÁÙ½çÇø£­£­£­±¾½ø³Ì¿É»ñÈ¡
+ä¿¡å·é‡ ä¸ äº’æ–¥é‡ ï¼ï¼ï¼è·å¾—ä¸é‡Šæ”¾çš„çº¿ç¨‹ä¸ä¸€æ ·
+ä¸´ç•ŒåŒºï¼ï¼ï¼æœ¬è¿›ç¨‹å¯è·å–
 
 ---
 #define DECLARE_TWO(A,B,_count) \
@@ -99,7 +99,7 @@ gdb> info local     # i local
 gdb> info reg  # info reg pc 
 gdb> l     # show current run point,each time will scrolldown    , "ls 0"show first line "l main" 
 gdb> del 6 7     # del bp 
-gdb> print p     # print local var p 
+gdb> print p     # print local var p # or use p p 
 gdb> f             #show current stack frame,show cur line , also "f 1" 
 gdb> bt     # back trace , show all call stack 
 
@@ -166,10 +166,10 @@ SECTIONS
 }
 ---
 
-£­£­£­£­£­makefile_ £­£­£­£­£­£­
+ï¼ï¼ï¼ï¼ï¼makefile_ ï¼ï¼ï¼ï¼ï¼ï¼
 
 -
-£­
+ï¼
 DIR1 DIR2 DIR3:
         $(MAKE) -C $@ all GCC=$(GCC)  : change the DIR_path before make; 
 
@@ -228,15 +228,15 @@ ar -t libopenvx.a
 -
 clean : 
 rm -rf obj/*.* *.exe;
-£­£­£­£­£­£­£­£­£­£­£­£­£­
-wildcard -Í¨Åä·û£»
-patsubst -Ìæ»»£»
-addprefix - Ç°×º£»
+ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼
+wildcard -é€šé…ç¬¦ï¼›
+patsubst -æ›¿æ¢ï¼›
+addprefix - å‰ç¼€ï¼›
 
 
 var1=$(ls) ,echo $(var1)
 
-£­£­£­£­Makefile ÖĞ¡¡mkdir -------
+ï¼ï¼ï¼ï¼Makefile ä¸­ã€€mkdir -------
 optimaze for code ; 
 -O equates to -O6
 peripherals (volatile data) can be mapped to a non-cacheable region
@@ -253,7 +253,7 @@ p_test_hss.o:p_test_hss.c
 clean:
         rm -rf *.elf *.o dep/*.* *.u
 
-vpath %.c $(srcdirs) $(_PSP_LIB_DIR)  : ¡¡search pattern in specific path 
+vpath %.c $(srcdirs) $(_PSP_LIB_DIR)  : ã€€search pattern in specific path 
 VPATH = src:../headers    : search path with : delimiter; 
 
 --- Compile HS in ccac_--- 
@@ -349,7 +349,7 @@ st_s %r0,[%sp,16]
 ld_s
 b_s
 bl_s fun - in stack the fun ; 
-j_s £ºreturn from the call
+j_s ï¼šreturn from the call
 sub_s %sp,%sp,3
 add_s
 -
@@ -363,7 +363,7 @@ bne_s
 ld.ab %blink,[%sp,20]
 .cfa_offset {r3, r2, r1}, -12 
 ---
-http://url.cn/LlXEfT ¡¡callback function example 
+http://url.cn/LlXEfT ã€€callback function example 
 int fun(void); 
 int fun(){
 printf("- in fun()\n"); 
@@ -432,9 +432,9 @@ libmwcl.a : mw compactLib;
 in order to cygwin with arcdev4:
 I need: ssh  lftp; 
 ---
-hcac : compiler C/C++ for arc series £º From C--> .o && .out Files
+hcac : compiler C/C++ for arc series ï¼š From C--> .o && .out Files
 
-hcac.exe -arc600 -g -Hnocopyr -o hello.o -c hello.c  £ü¡í£º
+hcac.exe -arc600 -g -Hnocopyr -o hello.o -c hello.c  ï½œâ„–ï¼š
 hcac       -arc600 -o hello.out hello.o 
 mdb -a6 -run hello.out
 - Simplify:  
@@ -467,7 +467,7 @@ comment:      :%s/^[^I ]\+/#/g   ;   %s/^[^I ]\{1,}/#/g   ;
 vim regex vs Perl regex ; 
 sub e.g. :  %g/^$/d; 
                 %s/\(.*\)$/\1/g    ; 
-¸ñÊ½»¯È«ÎÄ£º gg=G
+æ ¼å¼åŒ–å…¨æ–‡ï¼š gg=G
 serial op:    
 
 %s/^[\t ]\+//g|%g/^$/d   => gg=G ; 
@@ -480,14 +480,14 @@ vim -b test.bin
 :%!xxd   -> edit -> :%!xxd -r -> :w ; 
 
 ::vim input special char
-insert mode -> CTRL+K + <CODE> , 0M -> "¡ñ  " £°m-> "¡ğ  ¡±
+insert mode -> CTRL+K + <CODE> , 0M -> "â—  " ï¼m-> "â—‹  â€
 
 --endvim_
 autocomplete: ctrl + N and Ctrl +X   --Vim
 
 ---module---
 use :  module list   to get all the server app;  then which vcs??
-sc_bv< 256> data5;   data5.to_string(SC_HEX) --¡¡Hex for viewing
+sc_bv< 256> data5;   data5.to_string(SC_HEX) --ã€€Hex for viewing
 source /global/etc/modules.sh  #if in script , must add 
 module available architect; 
 module unload architect ; 
@@ -508,7 +508,7 @@ beta test - customer ;
 clipboard from system to VIM: ctrl+shift+V
 OR:      mouse select and in system , middle key mouse
 
-£­£­£­
+ï¼ï¼ï¼
 Perforce server operation:
 need .bashrc ,to add P4CLIENT=linqi
 >p4 client , edit the vim FILE, 
@@ -532,11 +532,11 @@ dpkg -L ia32-libs    # where is ia32-libs
 sudo apt-get purge mongodb
 sudo apt-get autoremove mongodb 
 -
-bakup source ,  update  /etc/apt/sources.list , use ÉÏ½»Ô´, then sudo apt-get update, then xxx install ia32-libs 
+bakup source ,  update  /etc/apt/sources.list , use ä¸Šäº¤æº, then sudo apt-get update, then xxx install ia32-libs 
 -
 stn +2 : alias , shutdown in 2min   
 CREATE symbol link for gmake:
-ln -s /usr/bin/make¡¡/usr/bin/gmake
+ln -s /usr/bin/makeã€€/usr/bin/gmake
 ln -s old_file new_lnk 
 
 diff t1 and t2:  vimdiff txt1 and txt2;
@@ -782,8 +782,8 @@ diff -uwqr
 :: dos if admin 
 net localgroup administrators 
 -
-setx logs_p "%cd%" , ÉèÖÃÓÀ¾Ã±äÁ¿in DOS; 
-attrib -H *.* , unset all Òş²ØÊôĞÔ£»
+setx logs_p "%cd%" , è®¾ç½®æ°¸ä¹…å˜é‡in DOS; 
+attrib -H *.* , unset all éšè—å±æ€§ï¼›
 systeminfo|findstr /i memory     ; DOS get memory ; 
 findstr /RI "go[a-z]o" txt.txt  :Regex in dos ; 
 findstr  "im wait" txt.txt         :: if it is im or wait, then pick out 
@@ -801,7 +801,7 @@ popd == cd - ;
 %~dp[0-N]  is @ARGV[0] root0:\root1\root2  ; 
 
 -
-dos ²¢ĞĞ£»
+dos å¹¶è¡Œï¼›
 @echo off
 echo Starting bat1
 start "" "bat1.bat"
@@ -848,9 +848,9 @@ echo right
 setlocal enabledelayedexpansion
 for /F "usebackq tokens=1-3 delims=./-;" %%i in (`date /t `) Do @echo %%i  %%j %%k  :: usebackq , `?my
 -
-cygwin »·¾³ÏÂ ÔËĞĞMS-DOS cmd.exe : 
+cygwin ç¯å¢ƒä¸‹ è¿è¡ŒMS-DOS cmd.exe : 
   > cmd /C go0  , go0.bat is windows batch file , help cmd ; 
-> $echo "obase=16; ibase=16; 111+222"|bc   bc set 16½øÖÆ£»
+> $echo "obase=16; ibase=16; 111+222"|bc   bc set 16è¿›åˆ¶ï¼›
 -about net---
 netstat -ano   ::  netstat -ano   |grep_ port  from taskmgr, you can know that by set PID 
 netsh dump   ::    get my ipaddr 
@@ -990,7 +990,7 @@ $bin =sprintf("%b",$dec);         # 10 dec -> binary
 $bin = 0b0101;   $dec = sprinf("%d", $bin );  print $dec; 
 perl -e '$a= unpack( "B32", "abc"); print $a;'    # H32 
 
-- 16 ½øÖÆ -
+- 16 è¿›åˆ¶ -
 printf '0x%*v02x',    ' 0x',    "abcd";
 -
 -perl EOF
@@ -1419,14 +1419,14 @@ $param_1=@ARGV[$_];
 say "EOF";
 ===
 
-|| && ²»¿É{ }Á¬ÓÃ£»
+|| && ä¸å¯{ }è¿ç”¨ï¼›
 #---perl cmp---
 open OUT, ">diff.html";
 print OUT "<style type='text/css'>\n", diff_css(), "</style>\n";
 print OUT diff_files('p_0903/System/ARCv2HS CCT/this.axml', 'p_0904/System/ARCv2HS CCT/this.axml');
 close OUT;
 #END ---
-CPAN_ ×Ô¶¯°²×°Ä£¿éÃüÁî
+CPAN_ è‡ªåŠ¨å®‰è£…æ¨¡å—å‘½ä»¤
 #cpan install this module:
 1. cd /home/linqi/.cpan/CPAN && rm *;  #if ok, can be omit this step;
 2. cpan,it will config cpan the first time;
@@ -1501,7 +1501,7 @@ sub get_timestamp(){
 say $today; # 2013-12-27
 -
 @array = (2.2222222, 1.10000000000000,3.888455455);
-map{ $_=sprintf("%.3f",$_) ;} @array ;  #ËÄÉáÎåÈë£»
+map{ $_=sprintf("%.3f",$_) ;} @array ;  #å››èˆäº”å…¥ï¼›
 #END---
 #----------------------
 sub map{
@@ -1522,7 +1522,7 @@ $a=@array[2];
 say $a;
 #END --------
 #----------------------
-## qw( a 11) Óë £¨11, 33.44) ;  
+## qw( a 11) ä¸ ï¼ˆ11, 33.44) ;  
 @arr=( 6.12 , 6.08333 );
 $_=@arr[0]-@arr[1];
 say ;
@@ -1615,8 +1615,8 @@ open (fp,">txt_xx.txt") or die "not open txt.txt";
 print (fp "here is the string\n");
 -
 
-£­regex
-~~ ÖÇÄÜÆ¥Åä
+ï¼regex
+~~ æ™ºèƒ½åŒ¹é…
 1.$result~~ @arr , result in arr;
 2.$result ~~ %hashT, $result in Keys HashT;
 3.$result ~~/[a-z]/
@@ -1662,7 +1662,7 @@ say "\n---------------------";
 $name = "helloworld.txt";
 println();
 $_=$name;
-if( m| \.txt \z |ix ){ #ºó×º.txt
+if( m| \.txt \z |ix ){ #åç¼€.txt
 say "your match:\n{PRE:${^PREMATCH}} <
 ${^MATCH}> {POST:${^POSTMATCH}}";
 }
@@ -1719,7 +1719,7 @@ foreach (sort keys %hash_){
 -
 #!/usr/bin/perl
 #print "this is perl program!\n";
-open F_OPEN ,'< txt1.txt';   ==> µ¥ÒıºÅ£»
+open F_OPEN ,'< txt1.txt';   ==> å•å¼•å·ï¼›
 while(<F_OPEN>){
  chomp;
  if ($_){
@@ -1742,6 +1742,59 @@ print (@n1,$n_pop);
 -
 ---
 --tensorflow_ tf_ ---
+-saver.save   !!! sometimes, need restart the server's kernel
+import tensorflow as tf
+
+# Create some variables.
+v1 = tf.Variable(1, name="v1")
+v2 = tf.Variable(2, name="v2")
+
+# Add an op to initialize the variables.
+init_op = tf.global_variables_initializer()
+
+# Add ops to save and restore all the variables.
+saver = tf.train.Saver()
+
+# Later, launch the model, initialize the variables, do some work, save the
+# variables to disk.
+with tf.Session() as sess:
+  sess.run(init_op)
+  print "v1 = ", v1.eval()
+  print "v2 = ", v2.eval()
+  # Save the variables to disk.
+  save_path = saver.save(sess, "/tmp/model.ckpt")
+  print "Model saved in file: c", save_path
+---
+-saver.restore
+import tensorflow as tf
+
+# Create some variables.
+v1 = tf.Variable(0, name="v1")
+v2 = tf.Variable(0, name="v2")
+
+# Add ops to save and restore all the variables.
+#saver = tf.train.Saver()
+
+# Later, launch the model, use the saver to restore variables from disk, and
+# do some work with the model.
+
+saver = tf.train.import_meta_graph('/tmp/model.ckpt.meta')
+
+with tf.Session() as sess:
+  # Restore variables from disk.
+    saver.restore(sess,tf.train.latest_checkpoint('/tmp/'))
+    #saver.restore(sess, "/tmp/model.ckpt")
+    #sess.run({"v1":0})
+    print("v1: ", sess.run('v1:0'))
+    print "Model restored."
+    pass
+
+---
+print {}.fromkeys(list_a).keys()  #python list uniq 
+-
+tf.train.Saver().save( sess , "mymodel.ckpt", 0)
+tf.train.Saver().restore(sess, tf.train.latest_checkpoint('./'))  # INFO:tensorflow:Restoring parameters from ./mymodel.ckpt-0
+-
 from tensorflow.examples.tutorials.mnist import input_data
 mnist = input_data.read_data_sets( "MNIST_data/", one_hot=1)
 import tensorflow as tf
@@ -2006,7 +2059,6 @@ list(m.flat)  = np.array ( np.mat([[1,3],[2,4]])).reshape(-1,)         # reshape
 arr = np.linspace(0,9,6).reshape(-1,)        # shape will be (6,), line array
 arr = np.linspace(0,9,6).reshape(1,-1)      # will be a mat, shape = [1,6] 
 -
-
 [ [1,a] for a in [1,2,3] ]       # if turple (1,a), also ok 
 print("{} + {} = {}".format(x, y, x + y))
 https://zhuanlan.zhihu.com/p/25717012 
@@ -2121,7 +2173,7 @@ in Int/, can login in ARChitectHS:
  use: alias ssh_arc4 = 'ssh -X linqi@arcdev4' ; 
 > ARChitectHS
 
----vim substitute Ìæ»»---
+---vim substitute æ›¿æ¢---
 :s/-/^M-/g   , '-' -> '- '+ ENTER ;  while ^M = ctrl+ v & ctrl+m; 
 
 MSS_ : Memory Subsystem.
@@ -2151,11 +2203,11 @@ how to run latest ARChitect on the sever?
 3. #module load architect; 
 4. ssh -X linqi@arcdev4 ; 
 ---
-IPºË·ÖÎªÈíºË£¨Soft Cores£©¡¢Ó²ºË£¨Hard Cores£©ºÍ¹ÌºË£¨Firm Cores£©ÈıÖÖ¡£
-ÈíºËÎªÄÜ×ÛºÏµÄHDLÃèÊö£¬Ó²ºËÎªĞ¾Æ¬°æÍ¼£¬¹ÌºËÎªÃÅ¼¶HDLÃèÊö
-SoCÉè¼Æ·ÖÎªIPºËÌá¹©ÕßºÍSoC¼¯³ÉÕß
-IPºË¿É¸´ÓÃ£º
-£±¿ÉÅäÖÃ£»£²²»Í¬¹¤ÒÕ£¬²»Í¬×ÛºÏ½Å±¾£¬ÊÊÓ¦ĞÂ¹¤ÒÕ£»£³¶àÆ½Ì¨·ÂÕæ£¬ÓĞVerilog£¬Ò²ÓĞVHDL£»
+IPæ ¸åˆ†ä¸ºè½¯æ ¸ï¼ˆSoft Coresï¼‰ã€ç¡¬æ ¸ï¼ˆHard Coresï¼‰å’Œå›ºæ ¸ï¼ˆFirm Coresï¼‰ä¸‰ç§ã€‚
+è½¯æ ¸ä¸ºèƒ½ç»¼åˆçš„HDLæè¿°ï¼Œç¡¬æ ¸ä¸ºèŠ¯ç‰‡ç‰ˆå›¾ï¼Œå›ºæ ¸ä¸ºé—¨çº§HDLæè¿°
+SoCè®¾è®¡åˆ†ä¸ºIPæ ¸æä¾›è€…å’ŒSoCé›†æˆè€…
+IPæ ¸å¯å¤ç”¨ï¼š
+ï¼‘å¯é…ç½®ï¼›ï¼’ä¸åŒå·¥è‰ºï¼Œä¸åŒç»¼åˆè„šæœ¬ï¼Œé€‚åº”æ–°å·¥è‰ºï¼›ï¼“å¤šå¹³å°ä»¿çœŸï¼Œæœ‰Verilogï¼Œä¹Ÿæœ‰VHDLï¼›
 A->U->T : Application -> Utilities -> Terminal ; 
 ---
 .bat set variables: 
@@ -2312,7 +2364,7 @@ git log -n 5    # see commit number=5
 git diff     # see a git cache vs. workspace
 ---
 ---shell_  script ---
-
+dd if=txt.txt bs=3 count=1 of=txt1.txt 
 - ldd_
 ldd interp.bin         # get all the dependency of .so file 
 - watch
@@ -2547,7 +2599,7 @@ tar xfv dw_sensor_ip_subsystem_v1.1.0 :
 tar xzfv Win32-Shortcut-0.08.tar.gz
 -
 unzip mdbissue.zip -d tmpdir4/ ;   extract .zip file ; 
-£¿¡¡£­£­£­echo $? ,0 ,cmd is successful; 
+ï¼Ÿã€€ï¼ï¼ï¼echo $? ,0 ,cmd is successful; 
 
 !ch - - - press UP can get implement "chmod" + history ->Enter is good
 x : if you can cd to the dir|| w : delete files;
@@ -2560,7 +2612,7 @@ sort -k2n -u  ccac.c  : field2 sort in unique
 sort -n -k2.5 x.txt  #- id=119 x119
 
 man date --- with [/or?]STRING to search certain STRING
-stdin ==0 stdout ==1 stderr ==2  redirection£º
+stdin ==0 stdout ==1 stderr ==2  redirectionï¼š
 ls *.h *.txt 1>stdout.txt 2>stderr.txt   ;  2>&1 : or >& txt.txt , all to stdout 
  sh dfkjsdf > txt.txt 2>&1
 ls -X ---sort by extension name  
@@ -2579,13 +2631,13 @@ echo $var1
 -
 echo {a..c}{0..4}   # a0 a1 .. b0 ,,,
 -
-var = `§âwd`  ; echo $var ;   # save output to var ; 
+var = `Ñ€wd`  ; echo $var ;   # save output to var ; 
 -cygwin cygpath cygstart-
 cygstart cmd.exe # will start a win cmd.exe in current workspace ; 
 cygpath -aw bc.txt  # to dos absolute name ; 
 cygpath -a -t dos bc.txt   # -t dos || -t unix 
 -
-cygpath -w `§âwd`    # cygwin path to windows ; 
+cygpath -w `Ñ€wd`    # cygwin path to windows ; 
 -
 if [[ "$#" -eq "2" ]] ; then   # shell compare only numbers
 fi
@@ -2648,7 +2700,7 @@ at 6:29PM "test.bat "  :: dos at
 
 date -d "next Fri"
 
-at -f cp_win7_sh.sh now +11min ; ¶¨Ê±jobs ; 
+at -f cp_win7_sh.sh now +11min ; å®šæ—¶jobs ; 
 at -f _perl.PL midnight 2014-06-20   # or : nohup  at -f _perl.PL midnight 2014-06-20 
 at -f _perl.PL `date -d "10 mins" "+%Y-%m-%d" `
 atq   #get No. of jobs 
@@ -2664,8 +2716,8 @@ md5sum perl.PL ;   35f16d8c50f133ea8fe79a31048204bf perl.PL
 find .  -name '*1.txt' | xargs -i ls -al {}
 -
 ---grep---
-cat * |grep -v "README\|readme" ;  v £­versely ·´Ïò£»
-ls | grep 's[123]' |xargs rm -rf¡¡¡¡£­£­¡¡Pass params to rm
+cat * |grep -v "README\|readme" ;  v ï¼versely åå‘ï¼›
+ls | grep 's[123]' |xargs rm -rfã€€ã€€ï¼ï¼ã€€Pass params to rm
 
 rm `ls|grep 's[123]'` : rm in condition; 
 grep -P '(makefile)|(\.mk\b)'
@@ -2810,13 +2862,16 @@ main()
     |__ fun()
         |__in_fun()
 before fun() call in_fun(), fun() would do:
-1. ½«·µ»ØµØÖ··ÅÈëÕ»µ×£»
-£². ±£´æfun() ÖĞ¿É¼ûµÄ²ÎÊıpush to STACK,left -> right£¬include :
+1. å°†è¿”å›åœ°å€æ”¾å…¥æ ˆåº•ï¼›
+ï¼’. ä¿å­˜fun() ä¸­å¯è§çš„å‚æ•°push to STACK,left -> rightï¼Œinclude :
     _params; 
     local_fun_i; 
-£³. load in_fun(_param) to %r0 , then CALL ; 
+ï¼“. load in_fun(_param) to %r0 , then CALL ; 
 
 --- C++11 c++_---
+opencv_ ubuntu build cml:
+installed necessary libs 
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/jd/t/cvbld 
 
 ---clang_ c_ ---
 -protobuf - 
@@ -3096,7 +3151,7 @@ return 1;
 };
 auto functest=[](int i){cout<<"here is lambda test \n"<<i<<endl; };
 functest(544);
-£­
+ï¼
 right angle brackets---
 template<int> struct X{};
 template<class T>struct Y{};
@@ -3137,7 +3192,7 @@ then : ARCtest -iss -test=1-10
 ---mqx linux setting
 
 #  Jidor MQX_GLOBAL CONFIG #
-export MQX_ROOT:=$(shell §âwd |xargs dirname)
+export MQX_ROOT:=$(shell Ñ€wd |xargs dirname)
 export COMPILER_ROOT :=$(shell which ccac |xargs dirname |xargs dirname)
 export MQX_COMPILER_ROOT:=$(COMPILER_ROOT)
 export NSIM_DIR:=build$(PS)nsim
@@ -3215,7 +3270,7 @@ make -e        # build it
  mdb -run -av2em -digilent arcv2em_2.met/*.elf    # dbg it 
 
 ---
-RTCS? TCP/IP stack RTCS   
+RTCSâ„¢ TCP/IP stack RTCS   
 1. p4 from the depot :
 
      //dwarc/Tools/MQX/Installers/main/dev/MQX_2.60_installer.tar.gz //linqi/linqi/MQX_p/MQX_2.60_installer.tar.gz
@@ -3266,26 +3321,26 @@ perl sqlite3 DBI    http://user.qzone.qq.com/2589079022/blog/1452649563
 ---jquery_---
 $("#id" + SPS + "img:eq(1)") .hide();
    $.post("backend.php",{ time: timestamp }, function(xml) {
-                                //ÒÆ³ıµô µÈ´ıÌáÊ¾
+                                //ç§»é™¤æ‰ ç­‰å¾…æç¤º
                                 $("#loading").remove();
-                                //µ÷ÓÃ½âÎöxmlµÄº¯Êı
+                                //è°ƒç”¨è§£æxmlçš„å‡½æ•°
                                 addMessages(xml);
                         });
-                         //Ã¿¸ô4Ãë£¬¶ÁÈ¡Ò»´Î.
+                         //æ¯éš”4ç§’ï¼Œè¯»å–ä¸€æ¬¡.
                         setTimeout('updateMsg()', 4000);
                 }
-        //½âÎöxmlÎÄµµº¯Êı£¬°ÑÊı¾İÏÔÊ¾µ½Ò³ÃæÉÏ
+        //è§£æxmlæ–‡æ¡£å‡½æ•°ï¼ŒæŠŠæ•°æ®æ˜¾ç¤ºåˆ°é¡µé¢ä¸Š
                 function addMessages(xml) {
-                    //Èç¹û×´Ì¬Îª2£¬ÔòÖÕÖ¹
+                    //å¦‚æœçŠ¶æ€ä¸º2ï¼Œåˆ™ç»ˆæ­¢
                         if($("status",xml).text() == "2") return;
-                        //¸üĞÂÊ±¼ä´Á
+                        //æ›´æ–°æ—¶é—´æˆ³
                         timestamp = $("time",xml).text();
-                        //$.eachÑ­»·Êı¾İ
+                        //$.eachå¾ªç¯æ•°æ®
                         $("message",xml).each(function() {
-                            var author = $("author",this).text(); //·¢²¼Õß
-                                var content = $("text",this).text();  //ÄÚÈİ
+                            var author = $("author",this).text(); //å‘å¸ƒè€…
+                                var content = $("text",this).text();  //å†…å®¹
                                 var htmlcode = "<strong>"+author+"</strong>: "+content+"<br />";
-                                $("#messagewindow").prepend( htmlcode ); //Ìí¼Óµ½ÎÄµµÖĞ
+                                $("#messagewindow").prepend( htmlcode ); //æ·»åŠ åˆ°æ–‡æ¡£ä¸­
                         });
                 }
 
@@ -3293,7 +3348,7 @@ $("#id" + SPS + "img:eq(1)") .hide();
 _$REQUEST  the data sent from the client to server , by $.post ()
 _$SERVER , include Server info and user agent info ,
 -
-    print("<B>ÇëÌîĞ´HTMLÑÕÉ«´úÂë:</B> ");
+    print("<B>è¯·å¡«å†™HTMLé¢œè‰²ä»£ç :</B> ");
     print("<INPUT ");
     print("TYPE=\"text\" ");
     print("NAME=\"inputColor\" ");
@@ -3331,7 +3386,7 @@ mongo        # into client shell
 > db.c0.insert( {
 ... name:"Tom",
     addr:{
-    "$ref" : "c1",    #¡¡cname
+    "$ref" : "c1",    #ã€€cname
     "$id" : ObjectId("5834fe64f79b9c007da927c5"),
     $db:"db0"
 }
@@ -3705,25 +3760,25 @@ var id_d = new Date("2013-02-15 21:00:00");
 d1-d2         # => number ms 
 var id_d = new Date( "2017-3-22 20:04").toLocaleString(); 
 
-var date1=new Date("2011-01-01 11:11");  //¿ªÊ¼Ê±¼ä
-var date2=new Date("2011-01-01 12:11");    //½áÊøÊ±¼ä
-var date3=date2.getTime()-date1.getTime()  //Ê±¼ä²îµÄºÁÃëÊı
+var date1=new Date("2011-01-01 11:11");  //å¼€å§‹æ—¶é—´
+var date2=new Date("2011-01-01 12:11");    //ç»“æŸæ—¶é—´
+var date3=date2.getTime()-date1.getTime()  //æ—¶é—´å·®çš„æ¯«ç§’æ•°
 
-//¼ÆËã³öÏà²îÌìÊı
+//è®¡ç®—å‡ºç›¸å·®å¤©æ•°
 var days=Math.floor(date3/(24*3600*1000))
 
-//¼ÆËã³öĞ¡Ê±Êı
-var leave1=date3%(24*3600*1000)    //¼ÆËãÌìÊıºóÊ£ÓàµÄºÁÃëÊı
+//è®¡ç®—å‡ºå°æ—¶æ•°
+var leave1=date3%(24*3600*1000)    //è®¡ç®—å¤©æ•°åå‰©ä½™çš„æ¯«ç§’æ•°
 var hours=Math.floor(leave1/(3600*1000))
-//¼ÆËãÏà²î·ÖÖÓÊı
-var leave2=leave1%(3600*1000)        //¼ÆËãĞ¡Ê±ÊıºóÊ£ÓàµÄºÁÃëÊı
+//è®¡ç®—ç›¸å·®åˆ†é’Ÿæ•°
+var leave2=leave1%(3600*1000)        //è®¡ç®—å°æ—¶æ•°åå‰©ä½™çš„æ¯«ç§’æ•°
 var minutes=Math.floor(leave2/(60*1000))
 
-//¼ÆËãÏà²îÃëÊı
-var leave3=leave2%(60*1000)      //¼ÆËã·ÖÖÓÊıºóÊ£ÓàµÄºÁÃëÊı
+//è®¡ç®—ç›¸å·®ç§’æ•°
+var leave3=leave2%(60*1000)      //è®¡ç®—åˆ†é’Ÿæ•°åå‰©ä½™çš„æ¯«ç§’æ•°
 var seconds=Math.round(leave3/1000)
-print(" Ïà²î "+days+"Ìì "+hours+"Ğ¡Ê± "+minutes+" ·ÖÖÓ"+seconds+" Ãë")
-//·ÖÀà: Javascript
+print(" ç›¸å·® "+days+"å¤© "+hours+"å°æ—¶ "+minutes+" åˆ†é’Ÿ"+seconds+" ç§’")
+//åˆ†ç±»: Javascript
 --
 -regex in node.js 
 var rgx =/[Hh]ello/g; 
@@ -3964,7 +4019,6 @@ proxy_pass http://www.baidu.com/;
 }
 
 -octave_ matlab_--- 
-
 type txt.txt
 pwd
 [x, y] = size(id_m)
@@ -4033,7 +4087,6 @@ lena(1:44,1:44) = 0;
 imshow(lena);
 -
 
-
 -polyfit 
 p=polyfit(x,y,2)   % p(1,1)*x^2 + ...  + x^0
 y0=polyval(p,0)   % figure out (p ( 0 ) -> y0) 
@@ -4068,8 +4121,8 @@ dec2bin( bitset (2^10,[1,2,3]))
 x.*x  % ele by ele   %  divide :  x ./ x 
 randperm( 4 )  %  3,2,4,1
 -
-£­¡¡x(1) x(2)¡¡£­£­£­¶şÔª·½³ÌÇó½â
-function y=f(x); y=zeros(2,1);y(1)=2*x(1)+x(2)-3; y(2)=x(1)+2*x(2)-3; endfunction¡¡£»¡¡
+ï¼ã€€x(1) x(2)ã€€ï¼ï¼ï¼äºŒå…ƒæ–¹ç¨‹æ±‚è§£
+function y=f(x); y=zeros(2,1);y(1)=2*x(1)+x(2)-3; y(2)=x(1)+2*x(2)-3; endfunctionã€€ï¼›ã€€
 [x, fval, info] = fsolve (@f, [1; 2])    % count solution for f(x,y) = 0 
 function y=f(x); y=zeros(2,1); y(1)=x(1)^2 +2*x(1)*x(2)+1; y(2)=x(1)^2-x(2)+2*x(1)-4; endfunction; 
 [x, fval, info] = fsolve (@f, [1; 111])
@@ -4110,6 +4163,24 @@ imshow( x )
 -
 
 --- docker_ ---
+https://yq.aliyun.com/articles/7695?spm=5176.100239.blogcont29941.14.c3v1iQ aliyu docker page tools 
+
+>install docker engine 
+curl -sSL http://acs-public-mirror.oss-cn-hangzhou.aliyuncs.com/docker-engine/internet | sh -
+> install tensorflow
+docker pull registry.cn-hangzhou.aliyuncs.com/denverdino/tensorflow
+
+
+
+1.to daocloud create  a tiny host ,with pw is: dao+35~~~
+2.remember the ssh ubuntu@ip and passwd 
+3. connect to that machine with  ssh xxx
+4. docker pull what I need first : tehsorflow/tensorflow
+5. docker run -it tehsorflow/tensorflow bash 
+6. ipython 
+
+
+
 -use local mirror for docker: restart service 
  curl -sSL https://get.daocloud.io/daotools/set_mirror.sh | sh -s http://301484f5.m.daocloud.io
   sudo systemctl restart docker.service
@@ -4118,13 +4189,20 @@ docker run -it -p 8888:8888 gcr.io/tensorflow/tensorflow
 setup:
     download the deb file from :  https://apt.dockerproject.org/repo/pool/main/d/docker-engine/
     in ubuntu 16.04 ,  sudo dpkg -i /path/to/package.deb
-    sudo docker run hello-world
+    sudo docker run hello-world 
 
 -search 
     docker search 
 need to addgroup docker , add jd into the group , then can avoid "sudo"
+//å¦‚æœè¿˜æ²¡æœ‰ docker group å°±æ·»åŠ ä¸€ä¸ª 
+sudo groupadd docker //å°†ç”¨æˆ·åŠ å…¥è¯¥ group å†…ã€‚ç„¶åé€€å‡ºå¹¶é‡æ–°ç™»å½•å°±ç”Ÿæ•ˆå•¦ã€‚ 
+sudo gpasswd -a${USER} docker //é‡å¯ docker æœåŠ¡ 
+sudo service docker restart
+//åˆ‡æ¢å½“å‰ä¼šè¯åˆ°æ–° 
+group newgrp - docker
 docker image ls
 docker run -it ubuntu bash
+docker run -it tensorflow/tensorflow bash
 docker run -it -v  $PWD:/tmp  busybox       # to mount host filesystem as container 
 docker pull imageName        # install pull 
 docker ps -a        # field $1 is container ID , stop it by :
@@ -4136,16 +4214,18 @@ docker container ls        # see container
 docker cp  $t/txt.txt  68597a8bb4c1:/root/per l_p/txt.txt     #copy file to container 
 
 # exec a container ,  run a image , first end :       docker container stop <container_name> or <container_id> 
-    docker container start  $container_id && docker exec -it $container_id bash            # reentry a container  ¢Ù
+    docker container start  $container_id && docker exec -it $container_id bash            # reentry a container  â‘ 
     or :
-    docker container start -i con_name         # docker re-entry a contain with bash  ¢Ú  £½£½¡· ¢Ù£½£½¢Ú
+    docker container start -i con_name         # docker re-entry a contain with bash  â‘¡  ï¼ï¼ã€‹ â‘ ï¼ï¼â‘¡
 -nsenter-    
     docker container top suspicious_hopper
     sudo nsenter  -t 31993  -m -u -i -n -p        # namespace enter nsenter  , just like start -i. 
 
 - docker save and load images 
     docker save -o busybox.tar busybox 
-    docker load -o busybox.tar 
+    docker load -o busybox.tar   
+or:
+   docker load -i busybox.tar 
     cat json.test | python -m json.tool     # json style 
 
 
@@ -4156,11 +4236,6 @@ sudo  apt-get install graphviz
 root@3ce2f5b85241:/opt/caffe# ./python/draw_net.py ./examples/siamese/mnist_siamese.prototxt   ./examples/siamese/mnist_siamese.png
  
 https://github.com/junku901/machine_learning     # github nodejs machine learning 
-
-
-
-
-
 
 ---dot_ ---
 dot -V
@@ -4307,5 +4382,6 @@ a1->b1;
 b2->a2;
 }
 -
+
 
 
