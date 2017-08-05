@@ -3318,3 +3318,122 @@ cout << a<< endl;
 
 
 
+import tensorflow as tf
+import numpy as np
+import re
+import random
+import os
+print "- import end"
+lines_to_return = (range(0,9))
+lines_to_return[1] = 9
+lines_to_return[2] = 9
+print lines_to_return
+
+#!perl
+use strict;
+# 1.put all the source file to one single file, .e.g: all_content.txt
+# 2.run : cat all_content.txt | grep '^class ' | sort -u > txt.txt , 
+#   this will grasp out class out;
+# 3.run :
+#   perl test.PL TO_FILTER_0 TO_FILTER_1 > test.dot 
+# 4.show the dot file as png 
+#
+# usage :
+#   perl test.PL K I Q
+#
+# written by Jidor Tang at 2017-8-5
+
+if ( -e "allclass.txt"){}
+else {
+	die "- no file \"allclass.txt\"\n";
+}
+my @vars = `cat allclass.txt|sort -u`;
+
+my @arr = @vars ; 
+
+### pre process ###
+chomp(@arr);
+@arr = grep !m/google/, @arr;
+@arr = grep !m/\:\:/, @arr; 
+@arr = grep !m/\;$/, @arr; 
+my @arr_inherit = (); 
+
+map{
+	chomp;
+	s/\;//g;
+	s/\{//g;
+	s/\s+/ /g;
+
+	my @t = split m/\s+/; 
+	if (@t[2] eq ':' || @t == 2){
+		push @arr_inherit , (join ' ',@t); 
+	}
+}@arr;
+my @after_filter = ();
+my %hash =();
+for my $t (@ARGV) {
+	my $to_filter_t = $t; 
+    if ($to_filter_t !~ m/\w/){
+	  next;
+	}
+	my @arr_inherit_0 = grep m/$to_filter_t/i, @arr_inherit; 
+	push @after_filter, @arr_inherit_0; 
+}
+@arr_inherit = @after_filter; 
+@arr_inherit = grep { ++$hash{$_} < 2 } @arr_inherit;
+
+my @all_graph = ();
+### generate the dot graph ###
+map{
+	chomp;
+	s/class //g;
+	my @t = split;
+	my $i=0;
+	for ( $i=0;$i<@t;$i++){
+	 if (@t[$i] eq ':'){
+	 last;
+	 
+	 }
+	}
+	my @element = ();
+	@element = ( @t[($i+1)..(@t-1)]  , " -> ",  @t[0..$i-1] ) if @t > 2; 
+	@element = ( @t[0..1] ) if @t <= 2; 
+	if ( @element[0] =~ m/public/ ){
+	  push @element, ""; 
+	}
+	elsif (@element[0] =~ m/virtual/ ){
+      push @element , "[style=dashed]";
+	}
+
+	#push @element, ";\n";
+	if (@element == 2){
+		unshift @all_graph , \@element; 
+	}
+	else { 
+        push @all_graph , \@element ; 
+	}
+}@arr_inherit; 
+
+### display ###
+my $dot_statement = '
+digraph abc{
+randir="TB";
+node[shape=record];
+__STAT__
+}
+
+'; 
+my $dot_kernel = ""; 
+for my $t (@all_graph){
+	my @element = @$t ; 
+	my $outstr = "@element";
+	$outstr =~ s/public //g;
+	$outstr =~ s/virtual //g;
+	$dot_kernel .= $outstr.";\n"; 
+
+}
+$dot_statement =~ s/__STAT__/$dot_kernel/; 
+print $dot_statement; 
+
+# cat pad_v_fe_be_cpp_h.cpp | grep  '^class ' | sort -u  > txt.txt 
+# cat vm_cpp_h.cpp | grep  '^class ' | sort -u  > txt.txt
