@@ -3328,7 +3328,10 @@ lines_to_return = (range(0,9))
 lines_to_return[1] = 9
 lines_to_return[2] = 9
 print lines_to_return
-
+### classv.PL ### 
+*********************
+\home\tanglq\t\classv.PL
+*********************
 #!perl
 use strict;
 # 1.put all the source file to one single file, .e.g: all_content.txt
@@ -3343,6 +3346,9 @@ use strict;
 #
 # written by Jidor Tang at 2017-8-5
 
+if (@ARGV == 1 && @ARGV[0] eq "_all_"){
+ @ARGV = ( "K", "Q", "I", "D", "P", "V", "T", "S", "N", "C" ); 
+}
 if ( -e "allclass.txt"){}
 else {
 	die "- no file \"allclass.txt\"\n";
@@ -3437,3 +3443,6 @@ print $dot_statement;
 
 # cat pad_v_fe_be_cpp_h.cpp | grep  '^class ' | sort -u  > txt.txt 
 # cat vm_cpp_h.cpp | grep  '^class ' | sort -u  > txt.txt
+
+EOF
+
