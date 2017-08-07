@@ -3446,3 +3446,18 @@ print $dot_statement;
 
 EOF
 
+    auto b_flag_save =  QFile::exists("savedscimg");
+    /*
+    auto range_int=[](unsigned int uiMaxRange)
+    {
+        const unsigned int ONE_MILLISEC              = 1; //1毫秒
+        const unsigned int ONE_SEC                   = 1000  * ONE_MILLISEC;
+        QTime time;
+        time = QTime::currentTime();
+        qsrand(time.msec() + time.second() * ONE_SEC);
+        int i_rand_num = qrand() % uiMaxRange + 1; // 1 ~ uiMaxRange
+        return i_rand_num;
+    };
+    range_int(10);
+    */
+
