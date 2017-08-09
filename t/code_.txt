@@ -3463,3 +3463,7 @@ EOF
 
 free -m 
 to see free memory in device
+ifstream if_( "x:\\current_test_results.dat", std::ifstream::binary); 
+uint32_t linesNumber; 
+if_.read(reinterpret_cast<char*>(&linesNumber), sizeof(linesNumber));
+
