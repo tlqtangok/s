@@ -3461,3 +3461,5 @@ EOF
     range_int(10);
     */
 
+free -m 
+to see free memory in device
