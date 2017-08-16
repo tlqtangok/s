@@ -3481,3 +3481,5 @@ cout << j<< endl;
 _if_.close(); 
 
 
+x  = pd.read_csv( "txt.txt",sep=" ", header=None)
+

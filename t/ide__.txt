@@ -1977,6 +1977,7 @@ plt.show()
 -import pandas as pd 
 -read_csv
 b=pd.read_csv("txt.txt", index_col=0)         # col = 0 is Line tag
+x  = pd.read_csv( "txt.txt",sep=" ", header=None)
 the txt.txt>
 ,id,s
 L0,_id0,11
