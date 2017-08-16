@@ -3119,6 +3119,8 @@ strcat( 'abc', '4' )
 lena=imread('x:\\lena.bmp');
 lena(1:44,1:44) = 0; 
 imshow(lena);
+
+plot(xx,yy, 'b.');
 -
 
 
