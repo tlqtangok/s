@@ -1987,15 +1987,29 @@ b["id"], b.id ,      b.loc["L0"] , b.loc["L0"]["id"]  , b["s"][0]
 b["big_id"]= b.id+b.id     # add new line   .id is readonly   ["id"] write 
 - pd to np , np to pd, shuffle
 df = pd.DataFrame(np.random.randn(4, 2), columns=list('ab'))
-np_x =df.values   #  np_x = np.copy(df)  
-np.random.shuffle(np_x)     # in-place change 
+n_p_x =df.values   #  n_p_x = np.copy(df)  
+np.random.shuffle(n_p_x)     # in-place change 
 - pd sort
 df.sort_values ( [0,1],0,[1,1] )          # f1 =0 f2=1 , sort by 0:increase ; 1:decend
 - flipud : reverse or 
 fl= np.flipud(x)  #  fl = arr[::-1] 
 
 python -V         # get version 
--numpy_ randomint
+-numpy_  np_ python__
+def load(fn):  
+	fc = open(fn).readlines( )
+	id_s = ""
+	for i in fc[:-1]:
+		id_s += i.strip() + ";" 
+		pass
+	id_s += fc[-1]
+	id_m = np.mat( id_s )
+	return id_m
+id_m = load("txt.txt")  # "0 0 \n1.1 1.2 \n1.3 1.4 \n"
+for i in id_m:
+   print (i)
+
+numpy randomint
 - mat ,use matlab styple
 np.mat('1 2;3.3 4')          # float64 
 -ndarray ndarray to mat , mat to ndarray
