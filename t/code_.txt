@@ -3486,14 +3486,19 @@ printf("%I64u\n",i<<62);
 
 #numpy python 
 def load(fn):  
-	fc = open(fn).readlines( )
-	id_s = ""
-	for i in fc[:-1]:
-		id_s += i.strip() + ";" 
-		pass
-	id_s += fc[-1]
-	id_m = np.mat( id_s )
-	return id_m
+    fc = open(fn).readlines( )
+    id_s = ""
+    for i in fc[:-1]:
+        id_s += i.strip() + ";" 
+        pass
+    id_s += fc[-1]
+    id_m = np.mat( id_s )
+    return id_m
+
+def plot_xy(id_m):
+    plt.scatter( list(id_m[:,0]), list(id_m[:,1]),s=0.5)
+    plt.show()
+plot_xy(load("txt.txt"))
 id_m = load("txt.txt")  # "0 0 \n1.1 1.2 \n1.3 1.4 \n"
 for i in id_m:
    print (i)
