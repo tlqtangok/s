@@ -1975,6 +1975,12 @@ plt.fill_between(x,y, 0, color='green')
 
 plt.show()
 -import pandas as pd 
+- from list to create df 
+df = pd.DataFrame(  [ [1,2,3], [2,2,4] ] )
+print (df)                 
+for k,v in enumerate(df[2]):
+    print ("k,v " + str(k) + " " + str(v))
+-	
 -read_csv
 b=pd.read_csv("txt.txt", index_col=0)         # col = 0 is Line tag
 x  = pd.read_csv( "txt.txt",sep=" ", header=None)
@@ -1987,7 +1993,8 @@ b["id"], b.id ,      b.loc["L0"] , b.loc["L0"]["id"]  , b["s"][0]
 b["big_id"]= b.id+b.id     # add new line   .id is readonly   ["id"] write 
 - pd to np , np to pd, shuffle
 df = pd.DataFrame(np.random.randn(4, 2), columns=list('ab'))
-n_p_x =df.values   #  n_p_x = np.copy(df)  
+n_p_x =df.values   #  n_p_x = np.copy(df)  , to np array
+npmatrix = np.mat(n_p_x) # to np matrix
 np.random.shuffle(n_p_x)     # in-place change 
 - pd sort
 df.sort_values ( [0,1],0,[1,1] )          # f1 =0 f2=1 , sort by 0:increase ; 1:decend
