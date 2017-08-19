@@ -1977,6 +1977,7 @@ plt.show()
 -import pandas as pd 
 - from list to create df 
 df = pd.DataFrame(  [ [1,2,3], [2,2,4] ] )
+df.dtypes    # f0 int64, f2 float64
 print (df)                 
 for k,v in enumerate(df[2]):
     print ("k,v " + str(k) + " " + str(v))
@@ -2003,6 +2004,20 @@ fl= np.flipud(x)  #  fl = arr[::-1]
 
 python -V         # get version 
 -numpy_  np_ python__
+-datetime-
+import datetime 
+id_dt_0 = datetime.datetime(2012, 4, 24, 15, 6, 0, 10)
+id_dt_1 = datetime.datetime(2012, 4, 4, 15, 6, 0, 0)
+id_dt_2 =  datetime.datetime(2012, 5, 4, 15, 6, 0, 100)
+print ( str(id_dt_2 - id_dt_1) )  # '30 days, 0:00:00.000100'
+ldt = [ id_dt_0 , id_dt_2, id_dt_1 ]
+ldt.sort()
+
+for i in ldt:
+    print (i)
+import dateutil
+help ( dateutil )
+
 
 def load(fn):  
     fc = open(fn).readlines( )
@@ -4410,5 +4425,4 @@ a1->b1;
 b2->a2;
 }
 -
-
 
