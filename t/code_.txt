@@ -3511,3 +3511,17 @@ for k,v in enumerate(df[2]):
 # "date","sc","sn","mn","ayep",     "sp",     "hi",   "lo",       "ep",  "vo",   "tm",     "tt",      "yep"
 # "date","sc","sn","mn","实际昨收盘","今开盘价","最高价","最低价","今收盘价","成交量","成交金额","成交笔数","昨收盘价"
 
+-datetime-
+import datetime 
+id_dt_0 = datetime.datetime(2012, 4, 24, 15, 6, 0, 10)
+id_dt_1 = datetime.datetime(2012, 4, 4, 15, 6, 0, 0)
+id_dt_2 =  datetime.datetime(2012, 5, 4, 15, 6, 0, 100)
+print ( str(id_dt_2 - id_dt_1) )  # '30 days, 0:00:00.000100'
+ldt = [ id_dt_0 , id_dt_2, id_dt_1 ]
+ldt.sort()
+
+for i in ldt:
+    print (i)
+import dateutil
+help ( dateutil )
+
