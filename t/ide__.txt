@@ -2015,8 +2015,12 @@ ldt.sort()
 
 for i in ldt:
     print (i)
+-dateutil-
 import dateutil
 help ( dateutil )
+from dateutil.parser import parse
+a = (parse( "2017-08-19 21:00")) # Sunday
+print (a.weekday()+1)  #  6 
 
 
 def load(fn):  
