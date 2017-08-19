@@ -3504,3 +3504,10 @@ for i in id_m:
    print (i)
 
 
+df = pd.DataFrame(  [ [1,2,3], [2,2,4] ] )
+print (df)                 
+for k,v in enumerate(df[2]):
+    print ("k,v " + str(k) + " " + str(v))
+# "date","sc","sn","mn","ayep",     "sp",     "hi",   "lo",       "ep",  "vo",   "tm",     "tt",      "yep"
+# "date","sc","sn","mn","实际昨收盘","今开盘价","最高价","最低价","今收盘价","成交量","成交金额","成交笔数","昨收盘价"
+
