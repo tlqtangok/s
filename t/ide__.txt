@@ -1978,6 +1978,12 @@ plt.show()
 - from list to create df 
 df = pd.DataFrame(  [ [1,2,3], [2,2,4] ] )
 df = pd.DataFrame( np.mat(" 1 2 3;3 2 1" ) )
+df = pd.DataFrame({ 
+    "f0":[1,2,3,4], 
+    "f1":[3,4,5,6],  
+})
+df 
+
 df.shape  # (4269,13) df.shape[0]
 df.dtypes    # f0 int64, f2 float64
 print (df)                 
