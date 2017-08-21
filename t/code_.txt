@@ -3529,3 +3529,26 @@ from dateutil.parser import parse
 a = (parse( "2017-08-19 21:00")) # Sunday
 print (a.weekday()+1)  #  6 
 
+def see_c_f(class_, fun_="", openhelp=0):
+    """
+    need : import numpy
+    see_c_f ( np, "mat",0) 
+    """
+    name = (str(class_).split(" "))[1]
+    name = name.replace("'","") +"."
+    #print (name)
+    assert(type(fun_) == type("str"))
+    if fun_ == "" :
+        print (dir(class_))
+        return 0
+    list_fun = dir(class_)
+    for e_fun in list_fun:
+        #print(i)
+        if openhelp == 0 and not str(e_fun).find(fun_):
+            print ( "- "+ (name + str(e_fun)).strip() + ""  )
+        if openhelp == 1 and str(e_fun) == (fun_):
+            print ("====== "+ (name + str(e_fun)).strip() + " ======")
+            eval_statement = (name + str(e_fun)).strip()
+            eval( " print ( " + eval_statement + "." + "__doc__" + ")" ) 
+
+

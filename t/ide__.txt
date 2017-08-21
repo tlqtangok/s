@@ -1975,6 +1975,32 @@ plt.fill_between(x,y, 0, color='green')
 
 plt.show()
 -import pandas as pd 
+- see help 
+np.mat?
+help(np.mat)
+def see_c_f(class_, fun_="", openhelp=0):
+    """
+    need : import numpy
+    see_c_f ( np, "mat",0) 
+    """
+    name = (str(class_).split(" "))[1]
+    name = name.replace("'","") +"."
+    #print (name)
+    assert(type(fun_) == type("str"))
+    if fun_ == "" :
+        print (dir(class_))
+        return 0
+    list_fun = dir(class_)
+    for e_fun in list_fun:
+        #print(i)
+        if openhelp == 0 and not str(e_fun).find(fun_):
+            print ( "- "+ (name + str(e_fun)).strip() + ""  )
+        if openhelp == 1 and str(e_fun) == (fun_):
+            print ("====== "+ (name + str(e_fun)).strip() + " ======")
+            eval_statement = (name + str(e_fun)).strip()
+            eval( " print ( " + eval_statement + "." + "__doc__" + ")" ) 
+
+-
 - from list to create df 
 df = pd.DataFrame(  [ [1,2,3], [2,2,4] ] )
 df = pd.DataFrame( np.mat(" 1 2 3;3 2 1" ) )
@@ -1983,6 +2009,7 @@ df = pd.DataFrame({
     "f1":[3,4,5,6],  
 })
 df 
+df.types  # will get 0: uint8 ;  1: int64...
 
 df.shape  # (4269,13) df.shape[0]
 df.dtypes    # f0 int64, f2 float64
@@ -2012,7 +2039,14 @@ df.sort_values(["dt"],0,[1])
 fl= np.flipud(x)  #  fl = arr[::-1] 
 
 python -V         # get version 
+- notebook shortcut 
+ctrl + /  # comment 
 -numpy_  np_ python__
+-np copy
+id_m2= np.copy(id_m)
+id_m2= id_m.copy()	# np copy  
+df2 = df.copy() # for pd.DataFrame(np.mat("1 2;3 4").T)
+-	
 -datetime-
 import datetime 
 id_dt_0 = datetime.datetime(2012, 4, 24, 15, 6, 0, 10)
@@ -2031,7 +2065,12 @@ from dateutil.parser import parse
 a = (parse( "2017-08-19 21:00")) # Sunday
 print (a.weekday()+1)  #  6 
 
-
+-np loadtxt savetxt -
+id_m =np.linspace(0,256,255*255).reshape(255,-1).astype(np.uint8)
+np.savetxt( "txt2.txt",id_m,fmt="%d", delimiter=" ")
+id_m_rd = np.loadtxt("txt2.txt", dtype='uint8', delimiter=" ")
+id_m_rd
+-
 def load(fn):  
     fc = open(fn).readlines( )
     id_s = ""
