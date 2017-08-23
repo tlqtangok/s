@@ -3552,3 +3552,80 @@ def see_c_f(class_, fun_="", openhelp=0):
             eval( " print ( " + eval_statement + "." + "__doc__" + ")" ) 
 
 
+// generate all src code 
+#!perl 
+use strict;
+my $curdir = `pwd`;
+#curdir can be change here
+chomp($curdir);
+my @arr = `( find $curdir -name '*.h' ; find $curdir -name '*.cpp' ) | grep -v /depends/win/ | sort -r >  txt.txt `; 
+
+@arr = `cat txt.txt`; 
+
+@arr = grep !m/moc_/, @arr; 
+@arr = grep !m/ui_/, @arr; 
+
+
+my $len = @arr; 
+
+#print @arr[0]; 
+
+#@arr=(@arr[0],@arr[1]);
+
+my $windows_path = 'V:\svn\br-1.8\src';
+
+my @arr_all = &print_all_files( \@arr ); 
+my $str_all = join '', @arr_all; 
+
+open my $FP, ">", "vista_src_all_cpp"; 
+	print $FP $str_all;
+close $FP; 
+system( " dos2unix  vista_src_all_cpp " ); 
+
+print "- please run:\n\tcp vista_src_all_cpp \$t/vista_src_all_br_1_8.cpp\n " ;
+
+### sub list ###
+sub print_all_files(\@){
+	my @arr_all = (); 
+	my $addr_ = @_[0]; 
+	my @ARGV_ = @$addr_;
+	use feature qw(say); 
+
+	my $NEED_ONLY_WINDOWS_NAME = 1;
+
+	map{
+		chomp;
+		if(-T "$_") {
+			push @arr_all,  "\n*********************\n";
+
+			if ( !$NEED_ONLY_WINDOWS_NAME ){
+				push @arr_all, $_."\n" ;
+			}
+
+			if ( $NEED_ONLY_WINDOWS_NAME ){
+				my $t = $_; 
+				chomp ($t) ;
+				if ( $t =~ m/br\-1\.8/ ){	
+					#$t =~ s/\/home\/tanglq\/depot\/br.1.4\/01_code/E\:\\br-1.4\\01_code/; 
+					$t =~ s/\/data\/tanglq\/svn\/br.1.8\//V\:\\svn\\br-1.8\\/;
+#my $windows_path = 'V:\svn\br-1.8\src';
+				}
+				else {
+				  $t =~ s/\/home\/tanglq\/depot\/svn\/01_code/D\:\\trunk\\01_code/; 
+				}
+				$t =~ s/\//\\/g;
+				push @arr_all,  $t."\n";
+			}
+
+			push @arr_all, "*********************\n";
+			push @arr_all,  `cat $_`;
+		}
+
+
+	}@ARGV_;
+
+	push @arr_all,  "EOF\n";
+
+return @arr_all; 
+}
+
