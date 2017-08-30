@@ -3629,3 +3629,36 @@ sub print_all_files(\@){
 return @arr_all; 
 }
 
+// save vector data
+
+  string id_save_data = "";
+
+  for ( auto &t : vec_ngs_simu){
+      cout << t.pkg_header.packet_counter << endl; 
+
+      uchar * p_begin =  (uchar*)&t;
+      uchar * p_end =  (uchar*)&t + sizeof(t);
+      string s_tmp = string(p_begin, p_end);
+
+      id_save_data += s_tmp;
+
+  }
+   
+   FILE *fp = fopen("Z:\\t.txt", "wb"); 
+   fwrite(id_save_data.c_str(), 1 ,id_save_data.size(),fp);
+
+   fclose(fp);
+
+
+
+#if 1
+      
+   FILE *fp_r = fopen("Z:\\t.txt", "rb"); 
+   for(int i=0;i<num;i++){
+       stru_ngs_simu_data each_pkg; 
+       fread( (void*)&each_pkg, 1 ,sizeof(each_pkg),fp_r);
+       cout << each_pkg.pkg_header.packet_counter << endl;  
+   }
+   fclose(fp_r);
+#endif
+
