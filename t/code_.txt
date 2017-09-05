@@ -3662,3 +3662,72 @@ return @arr_all;
    fclose(fp_r);
 #endif
 
+// serialize var and str to binary file    
+template <typename T>
+string serial_2_str( T&  pt)
+{
+	string id_s = ""; 
+	char *c_pt = (char*)&pt; 
+	id_s += string(c_pt, c_pt + sizeof(T)); 
+	return id_s ; 
+}
+
+void str_2_bin_file(string fn, const string& str_to_serial)
+{
+	ofstream of_( fn.c_str(), ios::binary); 
+	of_ << str_to_serial;  // never have "<< endl";
+	of_.close();
+}
+
+string bin_file_2_str(string fn){
+	ifstream if_(fn.c_str(), ios::binary); 
+	char c = '\0';
+	string id_s = "";
+
+	do
+	{  
+		if_ >> c;  
+		id_s +=  serial_2_str(c);
+	} while( !if_.eof());
+
+	if_.close();
+	return string(id_s.begin(), id_s.end()-1); 
+}
+
+
+
+// int main(
+int _tmain(int argc, char** argv)
+{
+
+#if 1
+
+	string fn = "D:\\j\\txt_txt";
+	system((string(" del ") + fn ).c_str());
+
+	uint64_t a= 99; 
+	float f  = 88.88; 
+
+	auto tt =  serial_2_str(a) + serial_2_str(f); 
+	cout << tt << endl; 
+	str_2_bin_file( fn, tt); 
+	system((string(" xxd -i ") + fn ).c_str());
+
+	cout << bin_file_2_str(fn)  << endl; 
+	string p = bin_file_2_str(fn);
+	cout << *(float*)(&p[0] + sizeof(uint64_t))  << endl; 
+
+
+
+	struct AA{
+		uint64_t a;
+		float f  ;
+
+	};
+
+	auto p_id_a = (AA*)(&p[0]);
+	cout << p_id_a->a  << endl; 
+	cout << p_id_a->f << endl; 
+
+
+#endif 
