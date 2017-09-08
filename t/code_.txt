@@ -3731,3 +3731,69 @@ int _tmain(int argc, char** argv)
 
 
 #endif 
+
+
+// arr to string 	
+#include <stdio.h>
+#include <cstdarg>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <vector>
+#include <iterator>
+#include <iostream>
+using namespace std; 
+
+template<typename T>
+string to_string_(T n){
+	ostringstream ss; 
+	ss << n ;
+	return ss.str();
+
+}
+
+template <typename T>
+string arr_to_string_1d(T *buf, int len){
+	string outs = ""; 
+	for( int i=0;i<len;i++){
+
+		outs += to_string_(buf[i]) + " "; 
+
+	}
+	outs += "\n";
+
+
+	return outs; 
+}
+
+template <typename T>
+string arr_to_string_2d(T *buf, int rows, int cols){
+	string outs = "";
+	for ( int i=0;i<rows;i++){
+		for( int j=0;j<cols;j++){
+			outs += to_string_(buf[i*cols+j]) + " "; 
+		}
+		outs += "\n";
+	}
+
+	return outs; 
+}
+
+int main(){
+
+
+
+	float arr[] ={88.889, 999}; 
+
+cout << arr_to_string_1d( arr , 2 ); 
+
+float arr_2d[2 * 4]={
+1 , 2 ,3,4,
+2 , 2 ,4,4,
+};
+
+cout << arr_to_string_2d(arr_2d, 2, 4); 
+return 0;
+}
+
