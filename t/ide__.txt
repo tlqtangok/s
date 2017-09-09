@@ -104,6 +104,25 @@ gdb> f             #show current stack frame,show cur line , also "f 1"
 gdb> bt     # back trace , show all call stack 
 gdb> info  breakpoints     # see all the bp
 
+# normal usage:
+gdb MainApp
+start  
+b something::somefun
+b som::somefun
+
+info br 
+c
+s
+c
+bt 
+info locals 
+f 
+l
+p somevar
+del 4-7
+start # can start again, still have the brks 
+#
+
 
 have inital data and static --- save in .data segment while not inital in .bss 
 ---objdump elfdump_  ---
