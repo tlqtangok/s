@@ -3732,6 +3732,7 @@ int _tmain(int argc, char** argv)
 
 #endif 
 
+<<<<<<< HEAD
 
 // arr to string 	
 #include <stdio.h>
@@ -3797,3 +3798,6 @@ cout << arr_to_string_2d(arr_2d, 2, 4);
 return 0;
 }
 
+=======
+i
+>>>>>>> 93b4f66ab1fd6e5ccd1c2220ddac339211627753
