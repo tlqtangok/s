@@ -2445,6 +2445,10 @@ eval $(ssh-agent -s)
 ssh-add ~/.ssh/id_rsa
 cat ~/.ssh/id_rsa.pub     # cp to your clipboard 
 https://github.com/settings/keys    #then new a SSH key here 
+# if prompt a merge when git push git commit issue:
+git commit -m'all'  -a 
+git remote set-url origin https://github.com/tlqtangok/s.git
+
 
 -
 git status    # show any opened files
