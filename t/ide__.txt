@@ -120,6 +120,7 @@ f
 l
 p somevar
 del 4-7
+thread apply all bt
 start # can start again, still have the brks 
 #
 
