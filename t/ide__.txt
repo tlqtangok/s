@@ -115,6 +115,7 @@ c
 s
 c
 bt 
+info args
 info locals 
 f 
 l
