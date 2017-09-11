@@ -577,6 +577,7 @@ return 0;
 
 find ../ -name '*.c' : find_ all the file in a dir;
 find . -type f -exec grep string_TAG {} [SPACE_HERE] \; # find file type 
+grep -n -R -P 'KImg' ./*.cpp  ../utility/*.cpp   # show lines 
 find_by_name '*.bat' -exec dos2unix {} \; >/dev/null 2>&1        # find then -exec 
 find_by_name '*.bat' -exec ls {} \; -exec ls -l {} \; 
 find_by_name \*.mk 
