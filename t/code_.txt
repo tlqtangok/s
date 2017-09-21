@@ -4043,3 +4043,4 @@ int _tmain(int argc, char** argv)
 
 // str serial bin file
 
+xxd -i -c 244 one_frame_ngs_simu.dat
