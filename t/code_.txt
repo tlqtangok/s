@@ -3944,8 +3944,9 @@ a = linalg.funm(a, lambda x: x*10)
 a
 -
 
+// str serial bin file
 
-
+//  xxd -i -c 244 one_frame_ngs_simu.dat
 // str serial bin file 
 template <typename T>
 string serial_2_str( T&  pt)
@@ -3969,18 +3970,22 @@ string bin_file_2_str(string fn){
 	string id_s = "";
 
 	char c = 'E'; 
+	
+
 	while(!if_.eof()){
 		if_.read(&c,1); 
-		id_s +=  serial_2_str(c);
+		id_s.push_back((uchar)c);
 	}
+
+	//id_s.get_allocator.capacity(99);
 
 	if_.close();
 	// cout << id_s.size() << endl;   // if 4 + 4, then it is 8
 	// const char* mydata = id_s.data(); 
 	// cout << *(uint32_t*)mydata;
+	// cout << (uchar)&str[3]
 	return string(id_s.begin(),id_s.end()-1); 
 }
-
 
 
 
@@ -4041,6 +4046,5 @@ int _tmain(int argc, char** argv)
 
 #endif 
 
-// str serial bin file
 
-xxd -i -c 244 one_frame_ngs_simu.dat
+printf("0x%02x", (uchar)c); 
