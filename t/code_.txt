@@ -4048,3 +4048,26 @@ int _tmain(int argc, char** argv)
 
 
 printf("0x%02x", (uchar)c); 
+
+
+// vector usage 
+#if 1
+
+	vector<int> vec_c; 
+	vec_c.resize(10+1); 
+	vec_c[10]= 99; 
+
+	for (auto i : vec_c){
+	  cout << i << endl; 
+	}
+
+
+	auto p_int = vec_c.data();
+
+	cout << p_int[10] << endl; 
+
+	cout << vec_c.size() << endl; 
+
+	vec_c.clear();
+#endif
+
