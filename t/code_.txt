@@ -4071,3 +4071,6 @@ printf("0x%02x", (uchar)c);
 	vec_c.clear();
 #endif
 
+### get all perl src code ###	
+my @arr = `( find $curdir -name '*.PL';find $curdir -name '*.pl'; find $curdir -name '*.t' ; find $curdir -name '*.pm' ) | grep -v /depends/win/ | sort -r >  txt.txt `;
+
