@@ -497,7 +497,7 @@ use perldo in vim :
 perldo s/^\s+//g ; 
 -vim edit binary files-
 xxd test.bin
- xxd -i o.txt    # get include c char array 
+ xxd -i -c 256 o.txt    # get include c char array 
 vim -b test.bin 
 :%!xxd   -> edit -> :%!xxd -r -> :w ; 
 
@@ -884,7 +884,7 @@ raspberry ip : arp -a ;
 
 
 
----Perl_ Learning--- 
+--- perl_ Learning--- 
 - perl substr :
 $a="abc"; @arr=split m// , $a;  print @arr[0],"\n"; print substr($a,0,1);    #a
 - get len : length 
@@ -1096,6 +1096,11 @@ my $SP = File::Spec->catfile('XX', 'XX');
 
 use File::Copy;
 copy( $original, $new_copy ) or die "Copy failed: $!";
+
+
+use  File::Spec::Functions;
+print File::Spec::Functions::rel2abs("../t" ); 
+# also print File::Spec::Functions::rel2abs("../t", $somedirname ); 
 
 sub get_SP(){
 # get file path separator
@@ -3935,7 +3940,7 @@ var child_id = spawn( "sleep" , ["0.3s"], {stdio:'inherit' }  );         // inhe
 var sleep_sync_ms = (x)=> {
     var exec_sync = require("child_process").execSync;
     var env_var = process.env["WINDIR"]; 
-    // sleep for windows, see: https://zhuanlan.zhihu.com/p/25412671 or see $perl_ p
+    // sleep for windows, see: https://zhuanlan.zhihu.com/p/25412671 or see $perl _ p
     env_var && exec_sync( ` sleep ${x}  ` );  
     var sleep_second = (x-300) / 1000 *1.000 ; 
     if ( x <=300 ) {sleep_second=0;}
