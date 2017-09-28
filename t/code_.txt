@@ -4076,8 +4076,9 @@ my @arr = `( find $curdir -name '*.PL';find $curdir -name '*.pl'; find $curdir -
 
 // get col = ? , get cols value arr_col
  export arr_col="0 1"  && perl -pe '@arr_col=split / /,@ENV{arr_col}; @t = split; @ans=(); push @ans , @t[$_] for @arr_col; $_= "@ans". "\n";  '  txt.txt 
+
 *********************
-ff.PL
+/home/tanglq/perl_p/ff.PL
 *********************
 #!perl
 use strict;
@@ -4089,7 +4090,7 @@ die "- need 2 args, perl this_file.PL filename.txt \"arr_cols\"\n" if @ARGV < 2;
 my $fn = @ARGV[0];
 my @fc = `cat $fn`; 
 
-@ENV{arr_cols}=@ARGV[1]; 
+@ENV{arr_cols}=join " ", @ARGV[1..@ARGV-1]; 
 
 my @arr_col=split / /,@ENV{arr_cols};
 @arr_col = grep m/\w/,@arr_col;
