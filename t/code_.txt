@@ -4074,6 +4074,5 @@ printf("0x%02x", (uchar)c);
 ### get all perl src code ###	
 my @arr = `( find $curdir -name '*.PL';find $curdir -name '*.pl'; find $curdir -name '*.t' ; find $curdir -name '*.pm' ) | grep -v /depends/win/ | sort -r >  txt.txt `;
 
-// get col = ?
-export arr_col="2"  && perl -pe '@arr_col=split / /,@ENV{arr_col}; @t = split; $_=@t[@arr_col[0]]."\n"; '  txt.txt
-
+// get col = ? , get cols value arr_col
+ export arr_col="0 1"  && perl -pe '@arr_col=split / /,@ENV{arr_col}; @t = split; @ans=(); push @ans , @t[$_] for @arr_col; $_= "@ans". "\n";  '  txt.txt 
