@@ -4142,3 +4142,6 @@ say join "\n", @ans_all;
 
 EOF
 
+#perl and 
+say if m/a/ and !m/A/; 
+
