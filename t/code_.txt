@@ -4164,3 +4164,75 @@ find({
 		             }
 	},'/home/tanglq/t/tlq/');
 
+my $cwd = cwd; 
+print $cwd ; 
+
+#!perl
+# chinese enable #
+use strict;
+use File::Spec::Functions;
+use feature qw(say);
+use Cwd;
+use File::Path;
+use File::Find;
+
+
+
+### global var ###
+my $fn_output = "txt.txt";
+##################
+
+
+
+chdir(@ENV{vm}); 
+my $cwd = cwd; 
+
+
+my @fc_all = (); 
+my @fn_all = (); 
+
+@ENV{WINDIR} or die "- must Windows\n"; 
+# find $curdir -name '*.h' ; find $curdir -name '*.cpp' ) | grep -v /depends/win/ | sort -r >  txt.txt `; 
+
+find({
+		no_chdir=>1,
+		
+		wanted => sub
+		{
+		  if ( /\.h$/ || /\.cpp$/   )
+		  {
+		 	  push @fn_all, $_ if !m|.depends.win.| and !m/ / and !m/bak\./ and !m/bak_script/; 
+		  }
+		}
+		 
+	},$cwd);
+
+@fn_all = reverse sort @fn_all; 
+
+
+for (@fn_all)
+{
+  push @fc_all, &get_fn_fc($_);
+}
+
+open my $FP, ">", $fn_output; 	
+ print $FP @fc_all;
+close $FP; 
+
+
+
+sub get_fn_fc($fn)
+{
+  my $fn = shift; 
+  $fn =~ s|\/|\\|g;
+  my $id_s = "";
+  $id_s .= "\n****************************\n"; 
+  $id_s .= $fn; 
+  $id_s .= "\n****************************\n"; 
+  my @fc = `type $fn`; 
+  $id_s .= "@fc"; 
+  return $id_s;
+}
+
+
+
