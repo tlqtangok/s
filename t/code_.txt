@@ -4236,3 +4236,8 @@ sub get_fn_fc($fn)
 
 
 
+# perl count 
+$_ = qq(abcaba0); 
+$_ = (tr/0/0/); 
+say ;  # => 1
+
