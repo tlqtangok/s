@@ -4145,3 +4145,22 @@ EOF
 #perl and 
 say if m/a/ and !m/A/; 
 
+say if m/--c/ ;
+use Cwd;
+use File::Path;
+use File::Find;
+
+find({
+		no_chdir=>1,
+		wanted => sub{
+			          say  ;
+		             }
+	},'.');
+
+find({
+		no_chdir=>1,
+		wanted => sub{
+			          say  ;
+		             }
+	},'/home/tanglq/t/tlq/');
+
