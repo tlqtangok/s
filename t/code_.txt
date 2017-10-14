@@ -4241,3 +4241,46 @@ $_ = qq(abcaba0);
 $_ = (tr/0/0/); 
 say ;  # => 1
 
+### hex to dec perl
+#!perl
+use strict;
+use Data::Dumper; 
+use feature qw(say);
+
+
+my $fn = q(); 
+
+$fn = @ARGV[0] if @ARGV; 
+
+if ( !  -e $fn)
+{
+  die "- not exist $fn\n"; 
+}
+
+my @fc = `type $fn `;
+chomp(@fc);
+
+$_="@fc"; 
+chomp;
+s/\s+/ /g;
+my @arr_0x = split;
+my $t = 0; 
+
+my $bin_out = ""; 
+
+my @dec_str_out = ();
+
+for my $hex_n (@arr_0x)
+{
+   say qq("\$t = $hex_n;"); 
+   eval qq(\$t = $hex_n;); 
+   
+   $bin_out .= pack("C", $t);    
+   push @dec_str_out, $t; 
+}
+
+open my $FP , ">", "txt.bin";
+print $FP $bin_out;
+close $FP; 
+
+say join " ", @dec_str_out ; 
