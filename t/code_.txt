@@ -4284,3 +4284,51 @@ print $FP $bin_out;
 close $FP; 
 
 say join " ", @dec_str_out ; 
+# perl hex to dec 
+#!perl
+use feature qw(say);
+
+
+my $fn = "";
+
+$fn = @ARGV[0] if @ARGV;
+die "- perl test.PL fn.txt\n" if ! -e $fn; 
+
+my @fc = `cat $fn`; 
+
+
+for my $e_l (@fc)
+{
+    say &p_e_l($e_l);
+}
+
+
+
+sub p_e_l($)
+{
+	my $e_l = shift; 
+	my $ret_str = "";
+	my @arr_e = split m/\s+/, $e_l;
+	for (@arr_e)
+	{
+
+		my $t = 0; 
+		if ( m/^0x/ )
+		{
+			eval qq(\$t = $_;); 
+			#my $str = sprintf "0x%0x ", $t;
+			my $str = sprintf "%3d ", $t;
+			$ret_str .= $str;
+		}
+
+	}
+	return $ret_str; 
+}
+
+# cout << read_file_2_mat(string("x:/txt.txt"), rows, cols);
+# [17, 34, 3, 85;
+#   68, 17, 2, 5]
+
+// gdb 
+dump mem test.bin buf buf+100
+
