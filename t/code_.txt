@@ -4333,3 +4333,89 @@ sub p_e_l($)
 dump mem test.bin buf buf+100
 
 
+# perl version 
+print $] ;  # => 5.024001
+
+*********************
+/home/tanglq/t/jd_estimate_time_usage.txt
+*********************
+#include <time.h>
+#include "opencv2/opencv.hpp"
+#ifdef _MSC_VER 
+#include "Windows.h"
+#define putenv _putenv
+#endif
+//#define JD_ printf("- JD_ %s: %s: %d\n", __FILE__, __FUNCTION__, __LINE__) 
+#define JD_ ((void)0) 
+#define JD_SHOW_DIFF(R0) JD_;_JD_SHOW_DIFF(R0)
+
+
+double JD_RT(char *tag)
+{
+	double Time = (double)cvGetTickCount();
+	double ret_d =  Time / (cvGetTickFrequency() * 1000 ) ;
+	printf("- JD time %s %gms\n",tag, ret_d); 
+	return ret_d;
+}
+
+double JD_TIME_R0()
+{
+	double Time = (double)cvGetTickCount();
+	return Time; 
+}
+
+void _JD_SHOW_DIFF(double R0)
+{
+	double jd_diff = (double)cvGetTickCount() - R0; 
+	printf( "%.2f ms\n", jd_diff /(cvGetTickFrequency()*1000) );
+}
+
+#define FILE_STUB "jd_test"
+static int flag_file_exist = 0; 			
+
+
+
+
+// int main(
+
+int _tmain(int argc, char** argv)
+{
+
+
+#if 1
+
+	system("lsh");
+
+	
+	while(1)
+	{
+
+
+		if(0 != _access(FILE_STUB, 0)){
+			flag_file_exist = 0;  // this process only take less than 1ms
+		}
+		else {
+			flag_file_exist = 1; 
+		}
+
+
+
+		if ( flag_file_exist )
+		{
+			JD_RT("t0_scthread"); 
+			double r0_scthread =   JD_TIME_R0();
+
+			Sleep(2000);
+			// do something 
+			JD_SHOW_DIFF(r0_scthread);
+		}
+
+
+		Sleep(1000);
+	}
+#endif
+
+
+
+EOF
+
