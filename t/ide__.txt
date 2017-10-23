@@ -1100,7 +1100,7 @@ copy( $original, $new_copy ) or die "Copy failed: $!";
 
 use  File::Spec::Functions;
 print File::Spec::Functions::rel2abs("../t" ); 
-# also print File::Spec::Functions::rel2abs("../t", $somedirname ); 
+# also print File::Spec::Functions::rel2abs("../t", $curdir );  
 
 sub get_SP(){
 # get file path separator
