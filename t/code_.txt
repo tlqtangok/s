@@ -4419,3 +4419,7 @@ int _tmain(int argc, char** argv)
 
 EOF
 
+# xxd 
+xxd -ps , then use perl pack("H*", $output)
+unpack("A*", $bin);
+
