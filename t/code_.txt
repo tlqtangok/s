@@ -4241,93 +4241,6 @@ $_ = qq(abcaba0);
 $_ = (tr/0/0/); 
 say ;  # => 1
 
-### hex to dec perl
-#!perl
-use strict;
-use Data::Dumper; 
-use feature qw(say);
-
-
-my $fn = q(); 
-
-$fn = @ARGV[0] if @ARGV; 
-
-if ( !  -e $fn)
-{
-  die "- not exist $fn\n"; 
-}
-
-my @fc = `type $fn `;
-chomp(@fc);
-
-$_="@fc"; 
-chomp;
-s/\s+/ /g;
-my @arr_0x = split;
-my $t = 0; 
-
-my $bin_out = ""; 
-
-my @dec_str_out = ();
-
-for my $hex_n (@arr_0x)
-{
-   say qq("\$t = $hex_n;"); 
-   eval qq(\$t = $hex_n;); 
-   
-   $bin_out .= pack("C", $t);    
-   push @dec_str_out, $t; 
-}
-
-open my $FP , ">", "txt.bin";
-print $FP $bin_out;
-close $FP; 
-
-say join " ", @dec_str_out ; 
-# perl hex to dec 
-#!perl
-use feature qw(say);
-
-
-my $fn = "";
-
-$fn = @ARGV[0] if @ARGV;
-die "- perl test.PL fn.txt\n" if ! -e $fn; 
-
-my @fc = `cat $fn`; 
-
-
-for my $e_l (@fc)
-{
-    say &p_e_l($e_l);
-}
-
-
-
-sub p_e_l($)
-{
-	my $e_l = shift; 
-	my $ret_str = "";
-	my @arr_e = split m/\s+/, $e_l;
-	for (@arr_e)
-	{
-
-		my $t = 0; 
-		if ( m/^0x/ )
-		{
-			eval qq(\$t = $_;); 
-			#my $str = sprintf "0x%0x ", $t;
-			my $str = sprintf "%3d ", $t;
-			$ret_str .= $str;
-		}
-
-	}
-	return $ret_str; 
-}
-
-# cout << read_file_2_mat(string("x:/txt.txt"), rows, cols);
-# [17, 34, 3, 85;
-#   68, 17, 2, 5]
 
 // gdb 
 dump mem test.bin buf buf+100
@@ -4422,4 +4335,64 @@ EOF
 # xxd 
 xxd -ps , then use perl pack("H*", $output)
 unpack("A*", $bin);
+
+*********************
+/home/tanglq/perl_p/num_arr_format_to_dec.PL
+*********************
+# perl any num format to dec 
+#!perl
+use feature qw(say);
+
+
+my $fn = "";
+
+$fn = @ARGV[0] if @ARGV;
+die "- perl test.PL fn.txt\n" if ! -e $fn; 
+
+my @fc = `cat $fn`; 
+
+
+for my $e_l (@fc)
+{
+	say &p_e_l($e_l);
+}
+
+
+
+sub p_e_l($)
+{
+	my $e_l = shift; 
+	my $ret_str = "";
+	my @arr_e = split m/ +/, $e_l;
+	@arr_e = grep !/^\s/, @arr_e;
+	for (@arr_e)
+	{
+		my $t = 0; 
+		if ( m/^[\-0-9]/ || m/^0x/ )
+		#if ( m/^0x/ )
+		{
+			eval qq(\$t = $_;); 
+			#my $str = sprintf "0x%0x ", $t;
+			my $str = sprintf "%3d ", int( $t + 0.5);
+			$ret_str .= $str;
+		}
+		else 
+		{
+			die "- error, num $_\n"; 
+		}
+
+	}
+	return $ret_str; 
+}
+
+# cout << read_file_2_mat(string("x:/txt.txt"), rows, cols);
+# [17, 34, 3, 85;
+#   68, 17, 2, 5]
+
+# usage
+#   perl   $perl_p/hex_to_dec.PL txt.txt
+#   txt can be "0x9 10 1e+10"
+
+
+EOF
 
