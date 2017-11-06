@@ -5,6 +5,7 @@
 
 #include "stdafx.h"
 #include <opencv2/opencv.hpp>
+// #define img_data(img, c, i, j) (img[(i) * (c) + (j)])
 #include <math.h>
 #ifdef _MSC_VER
 #include <Windows.h>
@@ -43,8 +44,8 @@ vector<string> split_2_words(string& line);
 vector<string> read_file_2_vec_str_chomp(string filename);
 template<class T> vector<T> get_num_arr_from_string(const string& sb);
 string fcout(string id_s, int fn_idx);
-void write_buf_2_file_2d(const string & fn, unsigned char* buf , int rows, int cols);
-void write_int8_buf_2_file_2d(const string & fn, int8_t* buf , int rows, int cols);
+string write_uint8_2_file_2d(const string & fn, unsigned char* buf , int rows, int cols);
+string write_int8_buf_2_file_2d(const string & fn, int8_t* buf , int rows, int cols);
 /* end utilities */
 
 
@@ -79,15 +80,76 @@ Mat get_rectangle_mat(Mat& id_m32, int start_rows,  int end_rows, int start_cols
 Mat get_center( Mat id_m32 , int divide_scale=16 );
 /* end img proc */
 
-
+/* serial str & bin */
+void str_2_bin_file(string fn, const string& str_to_serial);
+string bin_file_2_str(string fn);
+/* end serial */
 
 
 /* mess */
+
+
+
+////////////////
 template<typename T> string to_string_(T f){
     ostringstream ss; 
     ss << f; 
     return ss.str(); 
 };
+
+template <typename T>
+string arr_to_string_1d(T *buf, int len){
+        string outs = "";
+        for( int i=0;i<len;i++){
+
+			if (sizeof(buf[0]) == 1){
+				outs += to_string_((int)(buf[i])) + " ";
+			}
+			else{
+				outs += to_string_(buf[i]) + " ";
+			}
+
+        }
+        outs += "\n";
+
+
+        return outs;
+}
+
+template <typename T>
+string arr_to_string_2d(T *buf, int rows, int cols){
+        string outs = "";
+        for ( int i=0;i<rows;i++){
+                for( int j=0;j<cols;j++){
+
+					if (sizeof(buf[0]) == 1){
+						outs += to_string_((int)(buf[i])) + " ";
+					}
+					else{
+						outs += to_string_(buf[i]) + " ";
+					}
+
+                }
+                outs += "\n";
+        }	
+        return outs;
+}
+
+/////////////////////////
+// str serial bin file 
+template <typename T>
+string serial_2_str( T&  pt)
+{
+	string id_s = ""; 
+	char *c_pt = (char*)&pt; 
+	id_s += string(c_pt, c_pt + sizeof(T)); 
+	return id_s ; 
+}
+
+
+
+
+
 /*
 #define TO_STRING_ string to_string_( T f){ \
   ostringstream ss; \
@@ -98,4 +160,6 @@ template<typename T> string to_string_(T f){
 */
 /* end mess */
 
-#endif __IMG_PROC_ALGO_H__
+#endif //__IMG_PROC_ALGO_H__
+
+

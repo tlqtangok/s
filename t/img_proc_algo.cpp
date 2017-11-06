@@ -17,7 +17,7 @@ using namespace std;
 using namespace cv; 
 
 void clear_img(Mat id_m){
-
+#if 0
     for (int i=0;i<id_m.rows;i++){
         for(int j=0;j<id_m.cols;j++){
             for (int k=0;k< id_m.channels();k++){
@@ -27,7 +27,8 @@ void clear_img(Mat id_m){
             }
         }
     }
-
+#endif
+    memset(id_m.data, 0, id_m.total()*id_m.elemSize());
 }
 
 template<class T> 
@@ -365,7 +366,7 @@ string diff_int8_img_and_return_report(int8_t *img0, int8_t *img1, int rows, int
             int d = abs( img0[i*cols + j] - img1[i*cols + j] ); 
 
             if ( d != 0){
-                id_s += S_( i ) + " " + S_( j ) + " " + S_( img0[i*cols + j] ) + " " + S_( img1[i*cols + j] ) + "\n" ; 
+                id_s += "(" + S_( i ) + ", " + S_( j ) + ")" + "\t" + S_( img0[i*cols + j] ) + "\t" + S_( img1[i*cols + j] ) + "\n" ; 
                 sum += d; 
                 cnt++;    
             } // end if()
@@ -390,7 +391,7 @@ string diff_uint8_img_and_return_report(uint8_t *img0, uint8_t *img1, int rows, 
             int d = abs( img0[i*cols + j] - img1[i*cols + j] ); 
 
             if ( d != 0){
-                id_s += S_( i ) + " " + S_( j ) + " " + S_( img0[i*cols + j] ) + " " + S_( img1[i*cols + j] ) + "\n" ; 
+                id_s += "(" + S_( i ) + ", " + S_( j ) + ")" + "\t" + S_( img0[i*cols + j] ) + "\t" + S_( img1[i*cols + j] ) + "\n" ; 
                 sum += d; 
                 cnt++;    
             } // end if()
@@ -775,7 +776,7 @@ cv::Mat cvt_uchar_buf_2_mat(uchar* pData, int rows_, int cols_)
     return id_mt;
 }
 
-void write_buf_2_file_2d(const string & fn, unsigned char* buf , int rows, int cols){
+string write_uint8_2_file_2d(const string & fn, unsigned char* buf , int rows, int cols){
 
 
     //#define F_W (ios::out|ios::trunc)
@@ -793,16 +794,18 @@ void write_buf_2_file_2d(const string & fn, unsigned char* buf , int rows, int c
         sb += "\n"; 
     }
 
-    ofstream of_(fn, F_W); 
+   
 
-    of_ << sb ; 
-    of_.flush(); 
-
-    of_.close(); 
-
+    if ( fn.size() > 0 ){ 
+        ofstream of_(fn.c_str(), F_W); 
+        of_ << sb ; 
+        of_.flush(); 
+        of_.close(); 
+    }
+    return sb;
 }
 
-void write_int8_buf_2_file_2d(const string & fn, int8_t* buf , int rows, int cols){
+string write_int8_buf_2_file_2d(const string & fn, int8_t* buf , int rows, int cols){
 
 
     //#define F_W (ios::out|ios::trunc)
@@ -820,13 +823,13 @@ void write_int8_buf_2_file_2d(const string & fn, int8_t* buf , int rows, int col
         sb += "\n"; 
     }
 
-    ofstream of_(fn, F_W); 
-
-    of_ << sb ; 
-    of_.flush(); 
-
-    of_.close(); 
-
+    if ( fn.size() > 0 ){
+        ofstream of_(fn.c_str(), F_W); 
+        of_ << sb ; 
+        of_.flush(); 
+        of_.close(); 
+    }
+    return sb;
 }
 
 void gradient_img_buf(unsigned char* buf , int rows, int cols, int split){
@@ -859,8 +862,14 @@ void gradient_img_buf(unsigned char* buf , int rows, int cols, int split){
 
 } 
 string fcout(string id_s, int fn_idx){
-    string fn = string("x:/txt_") + S_(fn_idx) + string(".txt");
-    ofstream if_(fn, F_W); 
+
+#ifdef _MSC_VER
+    	string fn = string("x:/txt_") + S_(fn_idx) + string("_txt");
+#else 
+    	string fn = string("txt_") + S_(fn_idx) + string("_txt");
+#endif
+
+    ofstream if_(fn.c_str(), F_W); 
     if ( !if_.is_open()){
         cout << "- make sure the file path is accessible!"<< endl; 
     }
@@ -868,9 +877,41 @@ string fcout(string id_s, int fn_idx){
 
     if_<<id_s ; 
     if_.close(); 
+    cout << fn << endl; 
     return fn; 
 };
 
+void str_2_bin_file(string fn, const string& str_to_serial)
+{
+	ofstream of_( fn.c_str(), ios::binary); 
+	of_ << str_to_serial;  // never have "<< endl";
+	of_.close();
+}
+
+string bin_file_2_str(string fn){
+	ifstream if_(fn.c_str(), ios::binary); 
+
+	string id_s = "";
+
+	char c = 'E'; 
+
+
+	while(!if_.eof()){
+		if_.read(&c,1); 
+		id_s.push_back((uchar)c);
+	}
+
+	//id_s.get_allocator.capacity(99);
+
+	if_.close();
+	// cout << id_s.size() << endl;   // if 4 + 4, then it is 8
+	// const char* mydata = id_s.data(); 
+	// cout << *(uint32_t*)mydata;
+	// cout << (uchar)&str[3]
+	return string(id_s.begin(),id_s.end()-1); 
+}
 
 
 ///////
+
+
