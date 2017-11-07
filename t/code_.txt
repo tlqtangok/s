@@ -3484,25 +3484,6 @@ x  = pd.read_csv( "txt.txt",sep=" ", header=None)
 
 printf("%I64u\n",i<<62);
 
-#numpy python 
-def load(fn):  
-    fc = open(fn).readlines( )
-    id_s = ""
-    for i in fc[:-1]:
-        id_s += i.strip() + ";" 
-        pass
-    id_s += fc[-1]
-    id_m = np.mat( id_s )
-    return id_m
-
-def plot_xy(id_m):
-    plt.scatter( list(id_m[:,0]), list(id_m[:,1]),s=0.5)
-    plt.show()
-plot_xy(load("txt.txt"))
-id_m = load("txt.txt")  # "0 0 \n1.1 1.2 \n1.3 1.4 \n"
-for i in id_m:
-   print (i)
-
 
 df = pd.DataFrame(  [ [1,2,3], [2,2,4] ] )
 print (df)                 
@@ -4396,4 +4377,104 @@ sub p_e_l($)
 
 EOF
 
+### numpy plot_xy ### 
+import tensorflow as tf
+import numpy as np
+import re
+import random
+import os
+import matplotlib.pyplot as plt
+import pandas as pd
+from scipy import linalg , sparse
+
+
+#from __future__ import print_function
+
+# "date","sc","sn","mn","ayep",     "sp",     "hi",   "lo",       "ep",  "vo",   "tm",     "tt",      "yep"
+# "date","sc","sn","mn","实际昨收盘","今开盘价","最高价","最低价","今收盘价","成交量","成交金额","成交笔数","昨收盘价"
+
+def read_file_to_arr( id_filename): 
+    file = open(id_filename);
+    lines = file.readlines();
+    file.close(); 
+    return lines
+
+
+def load(fn):  
+    fc = open(fn).readlines( )
+    id_s = ""
+    for i in fc[:-1]:
+        id_s += i.strip() + ";" 
+        pass
+    id_s += fc[-1]
+    id_m = np.mat( id_s )
+    return id_m
+
+def plot_xy(id_m):
+    plt.scatter( list(id_m[:,0]), list(id_m[:,1]),s=0.5)
+    plt.show()
+    
+def see_c_f(class_, fun_="", openhelp=0):
+    """
+    need : import numpy
+    see_c_f ( np, "mat",0) 
+    """
+    name = (str(class_).split(" "))[1]
+    name = name.replace("'","") +"."
+    #print (name)
+    assert(type(fun_) == type("str"))
+    if fun_ == "" :
+        print (dir(class_))
+        return 0
+    list_fun = dir(class_)
+    for e_fun in list_fun:
+        #print(i)
+        if openhelp == 0 and not str(e_fun).find(fun_):
+            print ( "- "+ (name + str(e_fun)).strip() + ""  )
+        if openhelp == 1 and str(e_fun) == (fun_):
+            print ("====== "+ (name + str(e_fun)).strip() + " ======")
+            eval_statement = (name + str(e_fun)).strip()
+            eval( "print( " + eval_statement + "." + "__doc__" + ")" ) 
+
+        
+id_m = load("txt1.txt")
+plot_xy(id_m)
+
+
+#if _draw_convex_picture
+	float R ; 
+	float theta; 
+
+	int MAX = 100; 
+
+	float R_all = 22.0; 
+	float start_a = -120; 
+	float end_a = -20; 
+
+
+	float d_a = (end_a-start_a) * M_PI / 180 / MAX * 1.0f ; 
+
+	float d_r = R_all / MAX * 1.0f; 
+
+	string id_s = ""; 
+	
+	for (int i=0; i< MAX; i++)
+	{
+		R = 0 + i * d_r; 
+		for (int j=0; j<MAX; j++)
+		{
+			float b = d_a * j + start_a * M_PI / 180.0f ; 
+
+			if ( R > R_all / 4.0f)
+			{
+				id_s +=  to_string_( cosf(b) * R )+  " "  +  to_string_(sinf(b)*R) + "\n" ;
+			}
+
+		}
+
+
+	}
+
+	fcout(id_s, 1111); 
+#endif 
 
