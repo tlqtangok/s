@@ -2266,6 +2266,7 @@ functon call:
 #py.py
 f=open("fout.txt","wb");
 print>>f , "hello, world to fout.txt"; 
+f.close()
 
 -my_list.append(my_dict);- list append dict ;
 ---End Python---
