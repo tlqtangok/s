@@ -4478,3 +4478,6 @@ plot_xy(id_m)
 	fcout(id_s, 1111); 
 #endif 
 
+# python grep 
+arr = [ e for e in list_i if m(e,"a") ]
+
