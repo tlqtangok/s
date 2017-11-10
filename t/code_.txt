@@ -4400,14 +4400,17 @@ def read_file_to_arr( id_filename):
     return lines
 
 
-def load(fn):  
-    fc = open(fn).readlines( )
-    id_s = ""
+
+def load(fn):
+    fc = open(fn).readlines()
+    fc = [e for e in fc if len(e.strip())]
+    id_str = ""
     for i in fc[:-1]:
-        id_s += i.strip() + ";" 
-        pass
-    id_s += fc[-1]
-    id_m = np.mat( id_s )
+        id_str = id_str + i.strip() + ";"
+        
+    id_str = id_str + i.strip()
+    
+    id_m = np.mat(id_str)
     return id_m
 
 def plot_xy(id_m):
@@ -4481,3 +4484,5 @@ plot_xy(id_m)
 # python grep 
 arr = [ e for e in list_i if m(e,"a") ]
 
+# rm some file with '-p'
+perl -e ' unlink(q(-p));'
