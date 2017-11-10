@@ -4146,7 +4146,21 @@ proxy_pass http://www.baidu.com/;
 }
 }
 
--octave_ matlab_--- 
+-octave_ matlab_---
+-matlab plot_xy()
+---
+plot_xy.m
+---
+function plot_xy(id_m)
+% usage: load txt_1111.txt;  plot_xy(txt_1111)
+% X = x_1111
+% plot_xy( X )
+[r,c] = size(id_m);
+xx = id_m( 1:r , 1);
+yy = -id_m( 1:r,  2);
+plot(xx,yy, 'b.');
+-
+
 type txt.txt
 pwd
 [x, y] = size(id_m)
