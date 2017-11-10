@@ -4147,6 +4147,10 @@ proxy_pass http://www.baidu.com/;
 }
 
 -octave_ matlab_---
+-solve
+ syms x y z; [x,y] = solve('y=2*x+3+z', 'y=3*x-7/z')
+-
+
 -matlab plot_xy()
 ---
 plot_xy.m
