@@ -4486,11 +4486,14 @@ arr = [ e for e in list_i if m(e,"a") ]
 
 # rm some file with '-p'
 perl -e ' unlink(q(-p));'
+
 *********************
 split_perl_show_file.PL
 *********************
 #!perl
 use feature qw(say);
+use File::Basename qw(dirname);
+
 my @arr = `cat txt.txt`;
 
 my $i; 
@@ -4533,10 +4536,17 @@ for(my $j=0; $j<@ans-1; $j++)
 {
 	my $idx = $j; 
 	my $fn_idx = @ans[$idx];
-	print "- filename is @arr[$fn_idx]"; 
-	say "-----------------------------";
-	print @arr[@ans[$idx]+2..@ans[$idx+1]-2] ; 
+	my $fn = @arr[$fn_idx]; 
+	chomp($fn);
+	my $dirname_fn = dirname($fn);
+	`mkdir -p $dirname_fn`;
+	my @fc =  @arr[@ans[$idx]+2..@ans[$idx+1]-2] ; 
+	open my $FP, ">", $fn or die; 
+	print $FP @fc;
+	close $FP; 
 }
+
+
 
 
 
