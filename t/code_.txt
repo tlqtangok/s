@@ -4486,3 +4486,60 @@ arr = [ e for e in list_i if m(e,"a") ]
 
 # rm some file with '-p'
 perl -e ' unlink(q(-p));'
+*********************
+split_perl_show_file.PL
+*********************
+#!perl
+use feature qw(say);
+my @arr = `cat txt.txt`;
+
+my $i; 
+
+my @ans = ();
+for ($i=0; $i< @arr-3; $i++)
+{
+	if ( @arr[$i+0] =~ m/^\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*/ 
+		&& 
+		@arr[$i+2] =~ m/^\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*/ 
+		&& 
+		@arr[$i+1] !~ /^\s/)
+	{
+		
+		#say $i , " " , @arr[$i+1] ; 
+		push @ans, $i+1; 
+
+	}
+
+}
+
+
+
+for($i=@arr - 1; $i>0; $i--)
+{
+	if (@arr[$i] =~  /^EOF.?$/)
+	{
+		last;
+	}
+}
+
+push @ans, $i+1; 
+
+
+my $len_ans = @ans; 
+
+#my $idx = $len_ans -1 -1 - 0; 
+
+for(my $j=0; $j<@ans-1; $j++)
+{
+	my $idx = $j; 
+	my $fn_idx = @ans[$idx];
+	print "- filename is @arr[$fn_idx]"; 
+	say "-----------------------------";
+	print @arr[@ans[$idx]+2..@ans[$idx+1]-2] ; 
+}
+
+
+
+
+EOF
+
