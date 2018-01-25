@@ -4901,3 +4901,19 @@ int main()
 
 
 
+
+	// #include <stack>
+	stack<int> id_stk; 
+
+	int  arr[100];
+	int cnt = 0;
+	for (auto i : arr)
+	{
+		id_stk.push(cnt++);
+	}
+
+	int t = 0;
+	id_stk.pop();
+	t = id_stk.top();
+	cout << t << endl; 
+
