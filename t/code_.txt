@@ -4917,3 +4917,24 @@ int main()
 	t = id_stk.top();
 	cout << t << endl; 
 
+void throw_map_vect_2_threads_and_run(map<string, vector<uint64_t> >& map_chr_visit_pos)
+{
+
+        signal(SIGINT, Stop);
+
+#if 1 
+
+		for( auto& e_chr_name: map_chr_visit_pos)
+		{
+		    auto chr_name =  e_chr_name.first ;
+			auto& vect_0 = e_chr_name.second; 
+			pthread_t t_sort_0;
+			auto res = pthread_create(&t_sort_0, NULL, f_sort, &vect_0);
+			res = pthread_join(t_sort_0, NULL);
+		}
+#endif 
+}
+
+throw_map_vect_2_threads_and_run(map_chr_visit_pos);
+
+
