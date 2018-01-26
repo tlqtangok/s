@@ -4592,14 +4592,14 @@ EOF
 
 #include <stack>
 
-#ifdef _WIN32 
-	#include "winpthreads.h" 
-#else 
-	#include <pthread.h> 
-	#include <pthread.h>
-	#include <unistd.h>
-	#include <sys/wait.h>
-	#include <sys/types.h>
+#ifdef _WIN32
+        #include "winpthreads.h"
+#else
+        #include <pthread.h>
+        #include <pthread.h>
+        #include <unistd.h>
+        #include <sys/wait.h>
+        #include <sys/types.h>
 #endif
 
 
@@ -4608,10 +4608,10 @@ using namespace std;
 
 
 #ifdef _MSC_VER
-string fn = "E:/jd/t/test.sam";  // filename of sam 
-#else 
-string fn = "./test.sam";
-//string fn = "./test_1kw.sam";
+string fn = "E:/jd/t/test.sam";  // filename of sam
+#else
+//string fn = "./test.sam";
+string fn = "./test_1kw.sam";
 #endif
 
 
@@ -4649,57 +4649,72 @@ void Stop(int signo)
 
 void * f_sort(void * p_vect_)
 {
-	auto p_vect = (vector<uint64_t>*) p_vect_;
-	std::sort((*p_vect).begin(), (*p_vect).end());
+        auto p_vect = (vector<uint64_t>*) p_vect_;
+        std::sort((*p_vect).begin(), (*p_vect).end());
 }
 
 void throw_map_vect_2_threads_and_run(map<string, vector<uint64_t> >& map_chr_visit_pos)
 {
         signal(SIGINT, Stop);
 
-		for( auto& e_chr_name: map_chr_visit_pos)
-		{
-		    auto chr_name =  e_chr_name.first ;
-			auto& vect_0 = e_chr_name.second; 
-			cout << vect_0.size() << endl; 
-			pthread_t t_sort_0;
-			auto res = pthread_create(&t_sort_0, NULL, f_sort, &vect_0);
-			res = pthread_join(t_sort_0, NULL);
-		}
+                pthread_t arr_t_sort[200];
+                int cnt = 0;
+
+                for( auto& e_chr_name: map_chr_visit_pos)
+                {
+                    //auto chr_name =  e_chr_name.first ;
+                        auto& e_vect = e_chr_name.second;
+                        if(e_vect.size() > 500)
+                        {
+                                auto res = pthread_create(&arr_t_sort[cnt], NULL, f_sort, &e_vect);
+                                cnt++;
+                        }
+                        else
+                        {
+                                //std::sort(e_vect.begin(), e_vect.end());
+                                f_sort(&e_vect);
+                        }
+                }
+
+
+                for(auto i=0;i<cnt;i++)
+                {
+                        auto res = pthread_join(arr_t_sort[i], NULL);
+                }
 }
 
 
-class CSamParser  
+class CSamParser
 {
 public:
-	CSamParser(const string &fn_sam);
-	~CSamParser();
-	void display(int disp_level);
-	void save_map_to_file(const string& fn_chr_len, const string& fn_chr_visit_pos);
-	int get_visit_deepth(const string& chr_name, uint64_t detect_loc);
+        CSamParser(const string &fn_sam);
+        ~CSamParser();
+        void display(int disp_level);
+        void save_map_to_file(const string& fn_chr_len, const string& fn_chr_visit_pos);
+        int get_visit_deepth(const string& chr_name, uint64_t detect_loc);
 
 
 private:
-	string fn;	
-	map<string, uint64_t> map_chr_len;
-	map<string, vector<uint64_t> > map_chr_visit_pos;
-	
-	vector<string> split_str_2_vec(string &str, const char delimiter);
+        string fn;
+        map<string, uint64_t> map_chr_len;
+        map<string, vector<uint64_t> > map_chr_visit_pos;
 
-	string e_line;	//tmp line from file handler if_
-	void read_sam_file_2_two_maps();
+        vector<string> split_str_2_vec(string &str, const char delimiter);
 
-	void display_map_chr_len();
-	void display_map_chr_visit_pos();
-	
-	string fcout(const string& fn, const string& id_s);
-	CSamParser(); // invalid this default contructor
-	template<typename T> string to_string_(T f)
-	{
-		ostringstream ss;
-		ss << f;
-		return ss.str();
-	};
+        string e_line;  //tmp line from file handler if_
+        void read_sam_file_2_two_maps();
+
+        void display_map_chr_len();
+        void display_map_chr_visit_pos();
+
+        string fcout(const string& fn, const string& id_s);
+        CSamParser(); // invalid this default contructor
+        template<typename T> string to_string_(T f)
+        {
+                ostringstream ss;
+                ss << f;
+                return ss.str();
+        };
 };
 ////////////////////
 CSamParser::CSamParser()
@@ -4707,107 +4722,107 @@ CSamParser::CSamParser()
 }
 void CSamParser::display(int disp_level)
 {
-	switch (disp_level)
-	{
-	case 0:
-	{
-		display_map_chr_len();
-		break;
-	}
-	case 1:
-	{
-		display_map_chr_visit_pos();
-		break;
-	}
-	default:
-	{
-		display_map_chr_len();
-		cout << endl << "------------------------" << endl;
-		display_map_chr_visit_pos();
-		break;
-	}
+        switch (disp_level)
+        {
+        case 0:
+        {
+                display_map_chr_len();
+                break;
+        }
+        case 1:
+        {
+                display_map_chr_visit_pos();
+                break;
+        }
+        default:
+        {
+                display_map_chr_len();
+                cout << endl << "------------------------" << endl;
+                display_map_chr_visit_pos();
+                break;
+        }
 
-	}
+        }
 
 }
 
 void CSamParser::save_map_to_file(const string & fn_chr_len, const string & fn_chr_visit_pos)
 {
-	string id_s_map_chr_len = "";
-	for (auto e_map_chr_len : map_chr_len)
-	{
-		id_s_map_chr_len += e_map_chr_len.first + " => " + to_string_(e_map_chr_len.second) + "\n";
-	}
-	fcout(fn_chr_len, id_s_map_chr_len);
+        string id_s_map_chr_len = "";
+        for (auto e_map_chr_len : map_chr_len)
+        {
+                id_s_map_chr_len += e_map_chr_len.first + " => " + to_string_(e_map_chr_len.second) + "\n";
+        }
+        fcout(fn_chr_len, id_s_map_chr_len);
 
-	string id_map_chr_visit_pos = "";
-	for (auto i : map_chr_visit_pos)
-	{
-		id_map_chr_visit_pos += i.first + "\n";
-		for (auto j : i.second)
-		{
-			id_map_chr_visit_pos += to_string_(j) + ",";
-		}
-		id_map_chr_visit_pos += "\n";
-	}
-	fcout(fn_chr_visit_pos, id_map_chr_visit_pos);
+        string id_map_chr_visit_pos = "";
+        for (auto i : map_chr_visit_pos)
+        {
+                id_map_chr_visit_pos += i.first + "\n";
+                for (auto j : i.second)
+                {
+                        id_map_chr_visit_pos += to_string_(j) + ",";
+                }
+                id_map_chr_visit_pos += "\n";
+        }
+        fcout(fn_chr_visit_pos, id_map_chr_visit_pos);
 }
 
 int CSamParser::get_visit_deepth(const string & chr_name, uint64_t detect_loc)
 {
-	int deepth_ret = 0;
-	uint64_t chr_len = map_chr_len[chr_name];
-	assert(chr_len >= detect_loc);
-	assert(detect_loc >= 0);
+        int deepth_ret = 0;
+        uint64_t chr_len = map_chr_len[chr_name];
+        assert(chr_len >= detect_loc);
+        assert(detect_loc >= 0);
 
-	auto arr_visit_loc = map_chr_visit_pos[chr_name];
-	auto len_arr_visit = arr_visit_loc.size();
-	uint64_t detect_start = arr_visit_loc[0];
-	uint64_t detect_end = arr_visit_loc[len_arr_visit - 1] + CONST_LEN_OF_READ;
+        auto arr_visit_loc = map_chr_visit_pos[chr_name];
+        auto len_arr_visit = arr_visit_loc.size();
+        uint64_t detect_start = arr_visit_loc[0];
+        uint64_t detect_end = arr_visit_loc[len_arr_visit - 1] + CONST_LEN_OF_READ;
 
-	if (detect_end > chr_len)
-	{
-		detect_end = chr_len;
-	}
-	
-	if (detect_loc < detect_start || detect_loc > detect_end)
-	{
-		return deepth_ret;
-	}
+        if (detect_end > chr_len)
+        {
+                detect_end = chr_len;
+        }
 
-	else {
-		for (auto e_loc_start : arr_visit_loc)
-		{
-			if (e_loc_start > detect_loc)
-			{
-				break;
-			}
+        if (detect_loc < detect_start || detect_loc > detect_end)
+        {
+                return deepth_ret;
+        }
 
-			auto e_loc_end = e_loc_start + CONST_LEN_OF_READ;
-			if (e_loc_end > chr_len)
-			{
-				e_loc_end = chr_len;
-			}
+        else {
+                for (auto e_loc_start : arr_visit_loc)
+                {
+                        if (e_loc_start > detect_loc)
+                        {
+                                break;
+                        }
 
-			if (e_loc_start <= detect_loc && detect_loc <= e_loc_end)
-			{
-				deepth_ret++;
-			}
-		}
-	}
+                        auto e_loc_end = e_loc_start + CONST_LEN_OF_READ;
+                        if (e_loc_end > chr_len)
+                        {
+                                e_loc_end = chr_len;
+                        }
 
-	cout << chr_name << " in loc " << detect_loc << " has visit deepth " << deepth_ret << endl;
-	return deepth_ret;
+                        if (e_loc_start <= detect_loc && detect_loc <= e_loc_end)
+                        {
+                                deepth_ret++;
+                        }
+                }
+        }
+
+        cout << chr_name << " in loc " << detect_loc << " has visit deepth " << deepth_ret << endl;
+        return deepth_ret;
 }
 
 
 
 CSamParser::CSamParser(const string & fn_sam)
 {
-	fn = fn_sam;
-	read_sam_file_2_two_maps();
-	//gen_map_chr_len();
-	//gen_map_chr_visit_pos();
+        fn = fn_sam;
+        read_sam_file_2_two_maps();
+        //gen_map_chr_len();
+        //gen_map_chr_visit_pos();
 }
 
 CSamParser::~CSamParser()
@@ -4816,138 +4831,137 @@ CSamParser::~CSamParser()
 
 vector<string> CSamParser::split_str_2_vec(string & str, const char delimiter)
 {
-	std::vector<std::string>   vec_ret;
-	std::stringstream  data(str);
+        std::vector<std::string>   vec_ret;
+        std::stringstream  data(str);
 
-	std::string line;
-	while (std::getline(data, line, delimiter))	// assume 
-	{
-		// Note: if multiple delimitor in the source string, 
-		//	     you may see many empty item in vector
-		vec_ret.push_back(line);
-	}
-	return vec_ret;
+        std::string line;
+        while (std::getline(data, line, delimiter))     // assume
+        {
+                // Note: if multiple delimitor in the source string,
+                //           you may see many empty item in vector
+                vec_ret.push_back(line);
+        }
+        return vec_ret;
 }
 
 
 void CSamParser::display_map_chr_len()
 {
-	for (auto e_chr_len : map_chr_len)
-	{
-		cout << e_chr_len.first << " => " << e_chr_len.second << endl;
-	}
+        for (auto e_chr_len : map_chr_len)
+        {
+                cout << e_chr_len.first << " => " << e_chr_len.second << endl;
+        }
 }
 
 void CSamParser::display_map_chr_visit_pos()
 {
-	for (auto i : map_chr_visit_pos)
-	{
-		cout << i.first << endl;
-		for (auto j : i.second)
-		{
-			cout << j << ", ";
-		}
-		cout << endl << endl;
-	}
+        for (auto i : map_chr_visit_pos)
+        {
+                cout << i.first << endl;
+                for (auto j : i.second)
+                {
+                        cout << j << ", ";
+                }
+                cout << endl << endl;
+        }
 }
 
 void CSamParser::read_sam_file_2_two_maps()
 {
-	auto F_R = (ios::in);
-	ifstream if_(fn.c_str(), F_R);
-	assert(if_.is_open());
+        auto F_R = (ios::in);
+        ifstream if_(fn.c_str(), F_R);
+        assert(if_.is_open());
 
-	bool flag_meet_pg = false;
-	while (!if_.eof())
-	{
-		//if_.getline(line_content, MAX_CHAR);	// don't need read too long
-		std::getline(if_, e_line, '\n');
-		if (e_line.size() <= 1)continue;
-		auto arr_fields = split_str_2_vec(e_line, '\t');
-		
-		// classify to chr len and visit loc 
+        bool flag_meet_pg = false;
+        while (!if_.eof())
+        {
+                //if_.getline(line_content, MAX_CHAR);  // don't need read too long
+                std::getline(if_, e_line, '\n');
+                if (e_line.size() <= 1)continue;
+                auto arr_fields = split_str_2_vec(e_line, '\t');
 
-		if (arr_fields[0] == CONST_STR_PG_NO_TAB)
-		{
-			flag_meet_pg = true;
-			continue;
-		}
-		if (false == flag_meet_pg && arr_fields[0] == CONST_STR_SQ_NO_TAB)
-		{
-			map_chr_len[arr_fields[1].substr(3)] = (uint64_t)atoi(arr_fields[2].substr(3).c_str());
-		}
-		else 
-		{
-			if (!(CONST_INVALID_FLAG == arr_fields[1] || CONST_INVALID_XT_VALUE == arr_fields[11]))
-			{
-				map_chr_visit_pos[arr_fields[2]].push_back(atoi(arr_fields[3].c_str()));
-			}
-		}
-	}
-	if_.close();
+                // classify to chr len and visit loc
+
+                if (arr_fields[0] == CONST_STR_PG_NO_TAB)
+                {
+                        flag_meet_pg = true;
+                        continue;
+                }
+                if (false == flag_meet_pg && arr_fields[0] == CONST_STR_SQ_NO_TAB)
+                {
+                        map_chr_len[arr_fields[1].substr(3)] = (uint64_t)atoi(arr_fields[2].substr(3).c_str());
+                }
+                else
+                {
+                        if (!(CONST_INVALID_FLAG == arr_fields[1] || CONST_INVALID_XT_VALUE == arr_fields[11]))
+                        {
+                                map_chr_visit_pos[arr_fields[2]].push_back(atoi(arr_fields[3].c_str()));
+                        }
+                }
+        }
+        if_.close();
 #if 1
-	throw_map_vect_2_threads_and_run(map_chr_visit_pos);
-#endif 
+        throw_map_vect_2_threads_and_run(map_chr_visit_pos);
+#endif
 
-#if 0 
-	for (auto &e_map : map_chr_visit_pos)
-	{
-		auto& vec_t = e_map.second;		// the "&" is very important here !!! 
-		std::sort(vec_t.begin(), vec_t.end());
-	}
-#endif 
+#if 0
+        for (auto &e_map : map_chr_visit_pos)
+        {
+                auto& vec_t = e_map.second;             // the "&" is very important here !!!
+                std::sort(vec_t.begin(), vec_t.end());
+        }
+#endif
 
 }
 
 string CSamParser::fcout(const string & fn, const string & id_s)
 {
-	const auto F_W = (ios::out | ios::trunc);
-	ofstream if_(fn.c_str(), F_W);
-	if (!if_.is_open()) {
-		cout << "- make sure the file path is accessible!" << endl;
-	}
-	assert(if_.is_open());
+        const auto F_W = (ios::out | ios::trunc);
+        ofstream if_(fn.c_str(), F_W);
+        if (!if_.is_open()) {
+                cout << "- make sure the file path is accessible!" << endl;
+        }
+        assert(if_.is_open());
 
-	if_ << id_s;
-	if_.close();
-	//cout << fn << endl;
-	return fn;
+        if_ << id_s;
+        if_.close();
+        //cout << fn << endl;
+        return fn;
 }
 
 
 ///////////////// jd end class ///////////////
 
-int main() // jd add class 
+int main() // jd add class
 {
 
-	////////////////////////////////////////
-	CSamParser sam_parser(fn);
+        ////////////////////////////////////////
+        CSamParser sam_parser(fn);
 
 
-	//sam_parser.display(3);
+        //sam_parser.display(3);
 
 #if 1
-#ifdef _MSC_VER	
-	sam_parser.save_map_to_file("E:/jd/t/map_chr_len.txt", "E:/jd/t/map_chr_visit_pos.txt");
+#ifdef _MSC_VER
+        sam_parser.save_map_to_file("E:/jd/t/map_chr_len.txt", "E:/jd/t/map_chr_visit_pos.txt");
 #else
-	sam_parser.save_map_to_file("./map_chr_len.txt", "./map_chr_visit_pos.txt");
-#endif 	
-#endif 
+        sam_parser.save_map_to_file("./map_chr_len.txt", "./map_chr_visit_pos.txt");
+#endif
+#endif
 
-	/*
-	chr9
-	4243687, 14418024, 18894111, 34036842, 34902334, 81513453, 103028956, 113602295, 123115616, 140680084,
-	chrX
-	21984874, 24996837, 34800528, 35347355, 44948944, 64326215, 76501054, 99810429, 111356763, 125844711, 131145026, 131145026, 132320814,
-	*/
+        /*
+        chr9
+        4243687, 14418024, 18894111, 34036842, 34902334, 81513453, 103028956, 113602295, 123115616, 140680084,
+        chrX
+        21984874, 24996837, 34800528, 35347355, 44948944, 64326215, 76501054, 99810429, 111356763, 125844711, 131145026, 131145026, 132320814,
+        */
 
-	//sam_parser.get_visit_deepth("chrX", 131145026 + 4);	// expect 2
-	sam_parser.get_visit_deepth("chr15", 20009098 + 1);  // expect 1
-													
+        //sam_parser.get_visit_deepth("chrX", 131145026 + 4);   // expect 2
+        sam_parser.get_visit_deepth("chr15", 20009098 + 1);  // expect 1
 
-	//__P__;
-	return 0;
+
+        //__P__;
+        return 0;
 }
-
 
 
