@@ -4964,4 +4964,18 @@ int main() // jd add class
         return 0;
 }
 
+# perl reference ref 
+#!perl 
+use feature qw(say);
+
+
+my @arr=(
+	6666, 4444,
+	1,2,3,4); 
+my %hash = @arr;  
+my $addr_arr = \@arr; 
+my $addr_hash = \%hash; 
+print $addr_arr->[0] , "\n" ; 
+
+say $addr_hash->{6666} ; 
 
