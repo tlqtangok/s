@@ -4979,3 +4979,48 @@ print $addr_arr->[0] , "\n" ;
 
 say $addr_hash->{6666} ; 
 
+// c++ getopt usage 
+#include <iostream>
+#include <unistd.h>
+#include <cstdlib>
+
+using namespace std; 
+
+int main( int argc, char* argv[] )
+{
+	const char* nvalue = "World" ; 
+	int tvalue = 1 ;
+
+	int c ;
+	while( ( c = getopt (argc, argv, ":n:t:") ) != -1 ) 
+	{
+		switch(c)
+		{
+			case 'n':
+				if(optarg) nvalue = optarg;
+				cout << (char)c << " => " << nvalue <<endl; 
+				break;
+			case 't':
+				if(optarg) tvalue = std::atoi(optarg) ;
+				cout << (char)c << " => " << tvalue <<endl; 
+				break;
+		}
+	}
+
+	for( int i = 0 ; i < tvalue; ++i )
+		std::cout << '[' << i+1 << "] Hello " << nvalue << "!\n" ;
+	std::cout << '\n' ;   
+}
+
+/*
+g++ test.cpp  && ./a.out -n nv -t 5 
+n => nv
+t => 5
+[1] Hello nv!
+[2] Hello nv!
+[3] Hello nv!
+[4] Hello nv!
+[5] Hello nv!
+*/
+
+
