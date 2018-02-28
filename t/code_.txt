@@ -5024,3 +5024,26 @@ t => 5
 */
 
 
+// c++ namespace 
+namespace samtools 
+{
+	vector<string> split_str_2_vec(const string & str);
+	vector<sam_record> read_sam_file_2_vec_sam_record(const string & fn);
+};
+
+
+vector<string> samtools::split_str_2_vec(const string & str)
+{
+	std::vector<std::string>   vec_ret;
+	std::stringstream  data(str);
+
+	std::string line;
+	while (std::getline(data, line, '\t'))	// assume 
+	{
+		// Note: if multiple delimitor in the source string, 
+		//	     you may see many empty item in vector
+		vec_ret.push_back(line);
+	}
+	return vec_ret;
+}
+
