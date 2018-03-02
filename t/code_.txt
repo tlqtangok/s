@@ -5047,3 +5047,117 @@ vector<string> samtools::split_str_2_vec(const string & str)
 	return vec_ret;
 }
 
+#!perl 
+
+use strict ; 
+use feature qw(say);
+use List::Util qw(first sum max shuffle maxstr);
+use File::Spec::Functions;
+use File::Basename qw(dirname basename);
+
+my @arr_fn = qw(
+17B029145-1-79.realn.sam
+tumor115_target_flank100.bed
+1000G_phase1.indels.hg19.vcf
+Mills_and_1000G_gold_standard.indels.hg19.vcf 
+dbsnp_138.hg19.vcf
+); 
+
+my $db = @ENV{'db'}; 
+
+
+for my $fn_ (@arr_fn)
+{
+	my $fn = catfile($db, $fn_);
+	# print $fn."___" ; 
+
+	if ($fn !~ m/\#/)
+	{
+		# &sample_small_data($fn);
+
+		&grep_sam_bed_vcf_chr1_100_else_10($fn);
+	}
+}
+
+# just get some sample 100:10:10 and include the header from a series of files 
+sub grep_sam_bed_vcf_chr1_100_else_10($fn)
+{
+
+	my $fn = shift;
+
+	my @ret_lines = (); 
+	my %hash_chrname = ();
+	open my $FP , "<", $fn; 
+	my $cnt_all =  -1; 
+
+	my $idx = 0; 
+	$idx = 2 if $fn =~ m/\.sam/;
+	my $start_save = 0;
+	my $inner_cnt = 0;
+	my $cnt_r0 = 10;
+
+
+
+	while(<$FP>)
+	{
+		$cnt_all++;	
+		my $mul_factor = 1;
+		my $e = $_; 
+		if ($e =~ m/^\@/ || $e =~ m/^\#/)
+		{
+			push @ret_lines , $e;
+			#print $e;
+			next;
+		}
+
+		my @t = split m/\t/, $e;
+		my $chrname = @t[$idx];
+
+		my $old = keys %hash_chrname;
+		@hash_chrname{$chrname}++;
+		my $new = keys %hash_chrname;
+		
+		
+		if ($chrname eq "chr1")
+		{
+			$mul_factor = 10;
+		}
+
+		
+		
+		if ($old != $new)
+		{
+			$start_save = 1;
+			$inner_cnt = 0;
+		}
+
+		if ($start_save == 1)
+		{
+
+			if ($inner_cnt <= $cnt_r0 * $mul_factor)
+			{
+				push @ret_lines, $e;
+				#print $e;
+			}
+			else 
+			{
+				$start_save == 0;
+			}
+			
+			$inner_cnt++;
+
+		}
+	}
+
+	close $FP;
+	
+	open my $FP , ">", q(sample_small_).basename($fn);
+	print $FP (join "", @ret_lines);
+	close $FP; 
+
+	
+	
+	
+}
+
+
