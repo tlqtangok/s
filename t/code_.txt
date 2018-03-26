@@ -5177,3 +5177,52 @@ if_.seekg(2220);
                    '2'
                  ],
 };
+
+// pthread multithread parallel
+#include<iostream>
+#include<cstdio>
+#include <pthread.h>
+#include <vector>
+
+using namespace std;
+//pthread_mutex_t m= PTHREAD_MUTEX_INITIALIZER;
+
+static long long total=0;
+void* fun(void *p_e)
+{
+	//pthread_mutex_lock(&m);
+	//total += i;
+	//pthread_mutex_unlock(&m);
+
+	auto *p_e_ = (int*)p_e;
+	p_e_[0] = p_e_[0] * 2;
+}
+
+int main(int n_,char ** v_)
+{
+vector<int> v_i{1,2};
+	pthread_t id_thread[55];
+
+
+	auto len = v_i.size(); 
+	auto i = len;
+	for (i=0;i<len;i++)
+	{
+		pthread_create(&id_thread[i],NULL,&fun,&v_i[i]);
+	}
+
+	for (i=0;i<len;i++)
+	{
+		pthread_join(id_thread[i],NULL);
+	}
+
+
+	for (i=0;i<len;i++)
+	{
+		cout << v_i[i] << endl; 
+	}
+
+
+	return 0;
+};
+
