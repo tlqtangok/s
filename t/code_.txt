@@ -5226,3 +5226,23 @@ vector<int> v_i{1,2};
 	return 0;
 };
 
+int main()
+{
+	auto *fn_hg19 = "hg19.fasta0101"; 
+	auto *fn_hg19_idx = "hg19.fasta0101.idx";
+
+	ifstream if_(fn_hg19_idx); 
+	assert( if_.is_open());
+	string e_line;
+	while(getline(if_, e_line))
+	{
+		cout << e_line << endl; 
+	}
+
+
+	if_.close(); 
+
+	return 0;
+}
+
+
