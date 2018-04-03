@@ -5246,3 +5246,5 @@ int main()
 }
 
 
+if_.seekg(offset, if_.beg);
+ if_.readsome(snp_arr, len);
