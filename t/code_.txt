@@ -5248,3 +5248,35 @@ int main()
 
 if_.seekg(offset, if_.beg);
  if_.readsome(snp_arr, len);
+
+ // c++ lambda control return fun
+auto get_vcf_features = [](char* arr, uint32_t &start, uint32_t &end) -> vector<pair<uint32_t, uint32_t>>
+
+# perl serial to bin from num 
+sub serial_arr_2_bin(\@arr)
+{
+        my $arr_ref = shift;
+
+        for(my $i=0; $i<@$arr_ref; $i++)
+        {
+                $arr_ref->[$i] = pack("C", $arr_ref->[$i]); 
+        }
+
+}
+
+- c++ thread
+#include <thread>
+        int x = 9;
+        int y = 88;
+        std::thread td_2(
+            [](int &a, int &b)
+        {
+            cout << a << endl;
+            cout << b << endl;
+        },
+            std::ref(x),
+            std::ref(y)
+            );
+        td_2.join();
+-
+
