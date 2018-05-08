@@ -5320,3 +5320,85 @@ int main(int argc, char ** argv)
 #endif 
 
 
+// parse cml like : mainapp.exe -R R0 -R R1 -R R2 -L L0
+	
+class cml_parser
+{
+public:
+    map<string, vector<string>> map_;
+    cml_parser(int argc_, char** argv_)
+    {
+        static vector<string> keys_list{ "-knownSites",  "-R", "-I", "-o", "-L", "-grp" };
+        vector<string> vec_arg{};
+
+        auto len = argc_;
+        //cout << len << endl;
+
+        for (int i = 0; i < len; i++)
+        {
+            vec_arg.push_back(string(argv_[i]));
+        }
+
+        for (auto &e_key : keys_list)
+        {
+            vector<string>::iterator it = vec_arg.begin();
+            while ((it = std::find(it, vec_arg.end(), e_key)) != vec_arg.end())
+            {
+                it++;
+                map_[e_key].push_back(*it);
+                //cout << *it << endl;
+            }
+
+        }
+
+    };
+
+    int has_opt(string e_key)
+    {
+        return map_.find(e_key) == map_.end() ? 0 : 1;
+    }
+    vector<string> get_arg_opt(string e_key)
+    {
+        assert(has_opt(e_key));
+        return map_[e_key];
+    }
+
+};
+
+
+int main()
+{
+
+
+    
+#if 1
+    char * argvv[] = {
+        "./mainapp.exe",
+
+        "-knownSites", "K0", 
+        "-knownSites", "K1", 
+        "-knownSites", "K2",
+        "-I", "I_V",
+
+        "-o", "o_v", 
+        "-L", "L_V",
+        "-R", "R_V",
+        "-grp", "grp_v",
+
+    };
+ 
+    cml_parser id_cml(17, argvv);
+
+    for (auto &e_map : id_cml.map_)
+    {
+        cout << e_map.first << endl; 
+        for (auto &e_v : e_map.second)
+        {
+            cout << e_v << " ";
+        }
+        cout << endl << endl;;
+    }
+
+
+#endif 
+
