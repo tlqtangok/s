@@ -5402,3 +5402,129 @@ int main()
 
 #endif 
 
+
+
+// args parse for : mainapp -R R0 R1 R2 -L L0 L1 
+class arg_opt
+{
+public:
+    int argc;
+    char ** argv;
+    int start;
+    int offset;
+    int end;
+
+    arg_opt(int argc_, char** argv_, int offset_)
+    {
+        argc = argc_;
+        argv = argv_;
+        offset = offset_;
+    }
+    arg_opt() {};
+};
+
+class cmd_parser
+{
+public:
+
+    map<string, arg_opt*> map_;
+
+    vector<arg_opt> vec_opt;
+
+
+    cmd_parser(int argc_, char ** argv_)
+    {
+
+        vector<int> vec_loc_opt{};
+        vec_opt.clear();
+
+        for (int i = 0; i < argc_; i++)
+        {
+            if (argv_[i][0] == '-')
+            {
+                //cout << string(argv[i]) << endl;
+                vec_loc_opt.push_back(i);
+            }
+        }
+        vec_loc_opt.push_back(argc_);
+        vec_opt.resize(vec_loc_opt.size() - 1);
+
+        //vec_diff.clear();
+        for (int i = 0; i < vec_loc_opt.size() - 1; i++)
+        {
+            //vec_diff.push_back(vec_loc_opt[i + 1] - vec_loc_opt[i]);
+            string key(argv_[vec_loc_opt[i]]);
+            int e_argc = vec_loc_opt[i + 1] - vec_loc_opt[i] - 1;
+            arg_opt e_opt = arg_opt(e_argc, argv_, vec_loc_opt[i] + 1);
+            //cout << "e_argc: " << e_argc  << endl; 
+            //cout << key << " " << vec_loc_opt[i] + 1 << endl; 
+
+            vec_opt[i].argc = e_opt.argc;
+            vec_opt[i].argv = e_opt.argv;
+            vec_opt[i].offset = e_opt.offset;
+
+            vec_opt[i].start = vec_opt[i].offset;
+            vec_opt[i].end = vec_opt[i].start + vec_opt[i].argc;
+
+            map_[key] = &(vec_opt[i]);
+
+        }
+
+
+    }
+
+    ~cmd_parser()
+    {
+        vec_opt.clear();
+        map_.clear();
+    }
+
+    int has_opt(string key)
+    {
+        return map_.find(key) == map_.end() ? 0 : 1;
+    }
+    arg_opt get_arg_opt(string key)
+    {
+        assert(has_opt(key));
+        return *(map_[key]);
+    }
+};
+
+
+
+int main()
+{
+
+
+   
+#if 1
+
+    char * argvv_[] = {
+        "./mainapp.exe",
+
+        "-knownSites",
+			"K0",
+			"K1",
+			"K2",
+        "-I",
+			"I_V",
+        "-o",
+			"o_v",
+        "-L",
+			"L_V",
+        "-R",
+			"R_V",
+        "-grp",
+			"grp_v",
+    };
+
+    cmd_parser id_cml(15, argvv_);
+
+    auto opt_v = id_cml.get_arg_opt("-knownSites"); 
+
+    for (auto t = opt_v.start; t < opt_v.end; t++)
+    {
+        cout << opt_v.argv[t] << endl;
+    }
+
+#endif 
