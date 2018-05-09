@@ -5538,3 +5538,7 @@ std::cout << "Hello ! my id is " << (long int)syscall(SYS_gettid) << std::endl;
 
 # get max element in a vector;
 cout << *std::max_element(vec_sz.begin(), vec_sz.end(), [](int a, int b) {return a > b; }) << endl;
+
+#string.find("astring", 0) 
+cout << "- find:" << (e_line.find("\tchr1\t", 0) == string::npos )<< endl;
+
