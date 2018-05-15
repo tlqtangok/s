@@ -5547,3 +5547,5 @@ cout << "- find:" << (e_line.find("\tchr1\t", 0) == string::npos )<< endl;
  cout << if_.tellg() << endl; 
  if_.close();
 
+	ofstream of_(fn_out_sam, ios::app); assert(of_.is_open());
+
