@@ -5618,3 +5618,88 @@ int main()
 }
 
 
+#pragma pack(1)
+struct vcf_range
+{
+    uint64_t pos;
+    uint16_t len;
+};
+
+#pragma pack()
+
+
+int  bin_search_nearest_smaller_idx(vcf_range* arr_vcf_range, int sz, int val)
+{
+    auto high = sz - 1;
+
+    if (val <= arr_vcf_range[0].pos)
+        return 0;
+
+    if (val >= arr_vcf_range[high].pos)
+        return sz - 1;
+
+    auto low = 0;
+
+
+    while (1)
+    {
+        
+        auto index = (high + low) / 2;
+
+        if (arr_vcf_range[index].pos <= val)
+        {
+            low = index;
+        }
+        else
+        {
+            high = index;
+        }
+
+        if (low >= high - 1)
+        {
+            return low;
+        }
+     
+    }
+
+
+}
+
+
+
+
+// st__
+int main()
+{
+    string fn_sam_("E:/jd/t/git/bgi_samtools/bqsr/data/sample_small_realn_17m.sam_bak");
+    // string fn_sam_ = "E:/jd/t/db/CL100036475_L01_85.realn_3g.sam";
+      //string fn_sam_("E:/jd/t/git/bgi_samtools/bqsr/data/sample_small_17B029145-1-79.realn.sam");
+      //parallel_read_sam_2_vec(fn_sam_);
+    vcf_range arr_vcf_range[] =
+    {
+        { 243071988, 1 },
+        { 243072040, 4 },
+        { 243072065, 1 },
+        { 243072227, 1 },
+        { 243072234, 1 },
+        { 243072268, 1 },
+        { 243072440, 1 },
+        { 243072441, 1 },
+        { 243072444, 1 },
+        { 243072460, 1 },
+        { 243072658, 1 },
+        { 243072658, 3 },
+        { 243072661, 1 },
+        { 243072679, 1 },
+        { 243072682, 1 },
+        { 243072689, 4 },
+    };
+
+    auto sz = 339-324+1;
+    uint64_t val = 243072658 + 1;
+    cout << bin_search_nearest_smaller_idx(arr_vcf_range, sz, val) << endl;
+
+    __P__;
+}
+
+
