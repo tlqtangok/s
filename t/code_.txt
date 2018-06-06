@@ -5703,3 +5703,4 @@ int main()
 }
 
 
+alias grep='grep --color'
