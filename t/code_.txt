@@ -5704,3 +5704,27 @@ int main()
 
 
 alias grep='grep --color'
+
+# to output status 
+#val 
+
+#define calltest(val)  test ((val), #val)
+
+void test(int res, char const * const func)
+{
+    printf("%d, %s", res, func);
+}
+
+int return_int(int abc)
+{
+    return abc*abc;
+}
+int main()
+{
+    int abc = 9; 
+    calltest(return_int(abc));
+
+}
+// end 
+
+
