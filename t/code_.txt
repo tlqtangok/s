@@ -5728,3 +5728,57 @@ int main()
 // end 
 
 
+#if 1 
+	/*	
+		dim3 dimGrid(1, 2);
+		dim3 dimBlock(3, 4, 5);
+		testKernel<<<dimGrid, dimBlock>>>(10);
+	 */
+
+#define JD_TID(I,J,COLS, i,j,k,rows,cols,channels)  (((I)*(COLS)+(J)) * ((rows)*(cols)*(channels)) + ((i)*(cols)+(j)) * (channels) + (k))
+#define _TID(I,J, i,j,k)  (((I)*(COLS)+(J)) * ((rows)*(cols)*(channels)) + ((i)*(cols)+(j)) * (channels) + (k))
+#define __TID(I,J, i,j,k)  (((I)*(gridDim.x)+(J)) * ((blockDim.y)*(blockDim.x)*(blockDim.z)) + ((i)*(blockDim.x)+(j)) * (blockDim.z) + (k))
+
+	auto &I = blockIdx.y; 
+	auto &J = blockIdx.x; 
+	auto &COLS = gridDim.x; 
+	//auto &ROWS = gridDim.y; 
+
+	auto& i = threadIdx.y; 
+	auto& j = threadIdx.x; 
+	auto& k = threadIdx.z; 
+	auto &cols = blockDim.x;
+	auto &rows = blockDim.y;
+	auto &channels = blockDim.z;
+
+	auto jd_tid = JD_TID(I,J,COLS, 	i,j,k,rows,cols,channels);
+	printf("jd_tid : %d\n", jd_tid); 
+
+
+#endif 
+
+
+
+#if 0
+	/*	
+		dim3 dimGrid(1, 2);
+		dim3 dimBlock(3, 4, 5);
+		testKernel<<<dimGrid, dimBlock>>>(10);
+	 */
+#define __TID(I,J,K, i, j, k)  ((((I)*(gridDim.x)+(J))*(gridDim.z)+ (K))* (blockDim.x)*(blockDim.y)*(blockDim.z)+ ((i)*(blockDim.x)+(j))*(blockDim.z) + (k))
+	auto &I = blockIdx.y; 
+	auto &J = blockIdx.x; 
+	auto &K = blockIdx.z;
+	
+	auto& i = threadIdx.y; 
+	auto& j = threadIdx.x; 
+	auto& k = threadIdx.z; 
+	
+	auto jd_tid = __TID(I,J,K, i, j, k);
+	printf("%d\n", jd_tid); 
+#endif 
+
+
+#endif 
+
+https://shimo.im/docs/1aNb00H6dHQaVnL3
