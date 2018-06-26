@@ -5782,3 +5782,211 @@ int main()
 #endif 
 
 https://shimo.im/docs/1aNb00H6dHQaVnL3
+
+
+
+//---------- cuda sample vector opt -----------------------
+/*
+* Copyright 1993-2015 NVIDIA Corporation.  All rights reserved.
+*
+* Please refer to the NVIDIA end user license agreement (EULA) associated
+* with this source code for terms and conditions that govern your use of
+* this software. Any use, reproduction, disclosure, or distribution of
+* this software and related documentation outside the terms of the EULA
+* is strictly prohibited.
+*
+*/
+
+
+// System includes
+#include <stdio.h>
+#include <assert.h>
+
+
+
+// CUDA runtime
+#include <cuda_runtime.h>
+
+// helper functions and utilities to work with CUDA
+#include <helper_functions.h>
+#include <helper_cuda.h>
+
+// jd add
+#define DEL_ARR_MEM(P) if(NULL != (P)){delete [] (P); (P) = NULL;}
+
+#ifdef __linux__
+#define __P__  return 0;   //__
+#else
+#define __P__  system("pause");return 0;   //__
+#define popen(fp, fr) _popen((fp),(fr))
+#define pclose(fp) _pclose(fp)
+#endif
+#define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
+#define __TID(I,J,K, i, j, k)  ((((I)*(gridDim.x)+(J))*(gridDim.z)+ (K))* (blockDim.x)*(blockDim.y)*(blockDim.z)+ ((i)*(blockDim.x)+(j))*(blockDim.z) + (k))
+
+static void CheckCudaErrorAux(const char *file, unsigned line, const char *statement, cudaError_t err)
+{
+    if (err == cudaSuccess)
+        return;
+    std::cerr << statement << " returned " << cudaGetErrorString(err) << "(" << err << ") at " << file << ":" << line << std::endl;
+    exit(1);
+}
+
+#include <iostream>
+#include <numeric>
+#include <stdlib.h>
+using std::cout; 
+using std::endl;
+// jd end 
+
+#ifndef MAX
+#define MAX(a,b) (a > b ? a : b)
+#endif
+
+
+const static int rows = 2; 
+const static int cols = 5; 
+
+
+__device__ __host__ 
+inline float ker_opt(float &f, int idx)
+{
+    return 1.0f * f + idx;
+}
+
+__global__ void testKernel(float *gpu_data_input, float *gpu_data_output, int size)
+{
+    auto &I = blockIdx.y;
+    auto &J = blockIdx.x;
+    auto &K = blockIdx.z;
+
+    auto& i = threadIdx.y;
+    auto& j = threadIdx.x;
+    auto& k = threadIdx.z;
+
+    auto idx = __TID(I, J, K, i, j, k);
+    
+    gpu_data_output[idx] = ker_opt(gpu_data_input[idx], (int)idx);
+
+      
+}
+
+
+
+float * initialize_raw_data()
+{
+
+    auto size = rows * cols;
+    float *raw_data = new float[size];
+    assert(NULL != raw_data);
+    for (auto i = 0; i < size; ++i)
+    {
+        raw_data[i] = i * 1.0f;
+    }
+    
+    return raw_data;
+    
+}
+
+float * cpu_cal(float *raw_data)
+{
+    auto size = rows * cols; 
+    float *cpu_ret = new float[size];
+    assert(NULL != cpu_ret);
+    for (auto cnt = 0; cnt < size; cnt++)
+    {
+        cpu_ret[cnt] = ker_opt(raw_data[cnt], cnt);
+    }
+    return cpu_ret;
+}
+
+
+
+float *gpu_cal(float *raw_data)
+{
+    auto size = rows * cols; 
+
+    float *gpu_raw_data_input = NULL;
+    float *gpu_raw_data_output = NULL;
+    float *p_ret = new float[size];
+    assert(NULL != p_ret);
+
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&gpu_raw_data_input, sizeof(float)*size));
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&gpu_raw_data_output, sizeof(float)*size));
+
+    CUDA_CHECK_RETURN(cudaMemcpy(gpu_raw_data_input, raw_data, sizeof(float)*size, cudaMemcpyHostToDevice));
+
+    dim3 dimGrid(rows, 1, 1);
+    dim3 dimBlock(cols, 1, 1);
+
+    testKernel<<<dimGrid, dimBlock>>>(gpu_raw_data_input, gpu_raw_data_output, size);
+
+
+    CUDA_CHECK_RETURN(cudaMemcpy(p_ret, gpu_raw_data_output, sizeof(float)*size, cudaMemcpyDeviceToHost));
+    CUDA_CHECK_RETURN(cudaFree(gpu_raw_data_input));
+    CUDA_CHECK_RETURN(cudaFree(gpu_raw_data_output));
+    return p_ret;
+}
+
+void show_cuda_info(int flag_show)
+{
+
+    int devID;
+    cudaDeviceProp props;
+
+    // This will pick the best possible CUDA capable device
+    int argc = 0; 
+    char ** argv = NULL;
+    devID = findCudaDevice(argc, (const char **)argv);
+
+    //Get GPU information
+    CUDA_CHECK_RETURN(cudaGetDevice(&devID));
+    CUDA_CHECK_RETURN(cudaGetDeviceProperties(&props, devID));
+    
+    (flag_show)&& printf("Device %d: \"%s\" with Compute %d.%d capability\n", devID, props.name, props.major, props.minor);
+
+    (flag_show)&& printf("printf() is called. Output:\n\n");
+
+}
+
+
+// st__
+int main(int argc, char **argv)
+{
+
+    show_cuda_info(0);
+
+
+    //jd add
+    float *raw_data = initialize_raw_data();   // mem 0
+    float *cpu_ret = cpu_cal(raw_data); // mem 1
+    float *gpu_ret = gpu_cal(raw_data); // mem 2
+    
+    DEL_ARR_MEM(raw_data); // del 0
+
+    float cpu_sum = std::accumulate(cpu_ret, cpu_ret + rows * cols, 0.0f);
+    float gpu_sum = std::accumulate(gpu_ret, gpu_ret + rows * cols, 0.0f);
+
+
+    for (int i = 0; i < rows * cols; i++)
+    {
+        cout << i << ": " << cpu_ret[i] << endl;
+        cout << i << ": " << gpu_ret[i] << endl; 
+        cout << endl; 
+    }
+
+
+    DEL_ARR_MEM(cpu_ret); // del 1
+    DEL_ARR_MEM(gpu_ret); // del 2
+
+    printf("%f == %f\n", cpu_sum, gpu_sum);
+
+
+    //jd end 
+
+
+    //return EXIT_SUCCESS;
+    __P__;
+}
+
+
