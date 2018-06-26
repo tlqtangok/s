@@ -5786,6 +5786,7 @@ https://shimo.im/docs/1aNb00H6dHQaVnL3
 
 
 //---------- cuda sample vector opt -----------------------
+
 /*
 * Copyright 1993-2015 NVIDIA Corporation.  All rights reserved.
 *
@@ -5800,7 +5801,7 @@ https://shimo.im/docs/1aNb00H6dHQaVnL3
 
 // System includes
 #include <stdio.h>
-#include <assert.h>
+#include <cassert>
 
 
 
@@ -5810,6 +5811,7 @@ https://shimo.im/docs/1aNb00H6dHQaVnL3
 // helper functions and utilities to work with CUDA
 #include <helper_functions.h>
 #include <helper_cuda.h>
+//#include <helper_math.h>
 
 // jd add
 #define DEL_ARR_MEM(P) if(NULL != (P)){delete [] (P); (P) = NULL;}
@@ -5823,6 +5825,13 @@ https://shimo.im/docs/1aNb00H6dHQaVnL3
 #endif
 #define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
 #define __TID(I,J,K, i, j, k)  ((((I)*(gridDim.x)+(J))*(gridDim.z)+ (K))* (blockDim.x)*(blockDim.y)*(blockDim.z)+ ((i)*(blockDim.x)+(j))*(blockDim.z) + (k))
+#define GET_TID  __TID(I,J,K, i, j, k)
+#define DEFINE_I_J_K  auto &I = blockIdx.y; \
+            auto &J = blockIdx.x; \
+            auto &K = blockIdx.z; \
+            auto& i = threadIdx.y; \
+            auto& j = threadIdx.x; \
+            auto& k = threadIdx.z; 
 
 static void CheckCudaErrorAux(const char *file, unsigned line, const char *statement, cudaError_t err)
 {
@@ -5835,6 +5844,7 @@ static void CheckCudaErrorAux(const char *file, unsigned line, const char *state
 #include <iostream>
 #include <numeric>
 #include <stdlib.h>
+
 using std::cout; 
 using std::endl;
 // jd end 
@@ -5851,31 +5861,26 @@ const static int cols = 5;
 __device__ __host__ 
 inline float ker_opt(float &f, int idx)
 {
-    return 1.0f * f + idx;
+    return 1.0f * f + idx * 1.0f;
 }
 
 __global__ void testKernel(float *gpu_data_input, float *gpu_data_output, int size)
 {
-    auto &I = blockIdx.y;
-    auto &J = blockIdx.x;
-    auto &K = blockIdx.z;
+    DEFINE_I_J_K;
 
-    auto& i = threadIdx.y;
-    auto& j = threadIdx.x;
-    auto& k = threadIdx.z;
 
-    auto idx = __TID(I, J, K, i, j, k);
-    
+    extern __shared__ float shared[];
+
+    uint64_t idx = GET_TID;
+    assert(idx < rows * cols);
     gpu_data_output[idx] = ker_opt(gpu_data_input[idx], (int)idx);
 
-      
 }
 
 
 
 float * initialize_raw_data()
 {
-
     auto size = rows * cols;
     float *raw_data = new float[size];
     assert(NULL != raw_data);
@@ -5904,6 +5909,7 @@ float * cpu_cal(float *raw_data)
 
 float *gpu_cal(float *raw_data)
 {
+    cudaError_t error;
     auto size = rows * cols; 
 
     float *gpu_raw_data_input = NULL;
@@ -5921,6 +5927,22 @@ float *gpu_cal(float *raw_data)
 
     testKernel<<<dimGrid, dimBlock>>>(gpu_raw_data_input, gpu_raw_data_output, size);
 
+    //Synchronize (flushes assert output).
+ 
+    error = cudaDeviceSynchronize();
+
+
+    //Check for errors and failed asserts in asynchronous kernel launch.
+    if (error == cudaErrorAssert)
+    {
+        printf("\n-- Begin assert output\n\n");
+        printf("Device assert failed as expected, CUDA error message is: %s\n\n",  cudaGetErrorString(error));
+        printf("\n-- End assert output\n\n");
+        system("pause");
+    }
+
+    
+    //testResult = error == cudaErrorAssert;
 
     CUDA_CHECK_RETURN(cudaMemcpy(p_ret, gpu_raw_data_output, sizeof(float)*size, cudaMemcpyDeviceToHost));
     CUDA_CHECK_RETURN(cudaFree(gpu_raw_data_input));
@@ -5983,7 +6005,6 @@ int main(int argc, char **argv)
 
 
     //jd end 
-
 
     //return EXIT_SUCCESS;
     __P__;
