@@ -5787,6 +5787,7 @@ https://shimo.im/docs/1aNb00H6dHQaVnL3
 
 //---------- cuda sample vector opt -----------------------
 
+### cuda on matrix ###
 /*
 * Copyright 1993-2015 NVIDIA Corporation.  All rights reserved.
 *
@@ -5798,7 +5799,7 @@ https://shimo.im/docs/1aNb00H6dHQaVnL3
 *
 */
 
-
+#pragma diag_suppress 177
 // System includes
 #include <stdio.h>
 #include <cassert>
@@ -5811,7 +5812,7 @@ https://shimo.im/docs/1aNb00H6dHQaVnL3
 // helper functions and utilities to work with CUDA
 #include <helper_functions.h>
 #include <helper_cuda.h>
-//#include <helper_math.h>
+#include <helper_math.h>
 
 // jd add
 #define DEL_ARR_MEM(P) if(NULL != (P)){delete [] (P); (P) = NULL;}
@@ -5824,20 +5825,32 @@ https://shimo.im/docs/1aNb00H6dHQaVnL3
 #define pclose(fp) _pclose(fp)
 #endif
 #define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
+
 #define __TID(I,J,K, i, j, k)  ((((I)*(gridDim.x)+(J))*(gridDim.z)+ (K))* (blockDim.x)*(blockDim.y)*(blockDim.z)+ ((i)*(blockDim.x)+(j))*(blockDim.z) + (k))
-#define GET_TID  __TID(I,J,K, i, j, k)
-#define DEFINE_I_J_K  auto &I = blockIdx.y; \
-            auto &J = blockIdx.x; \
-            auto &K = blockIdx.z; \
-            auto& i = threadIdx.y; \
-            auto& j = threadIdx.x; \
-            auto& k = threadIdx.z; 
+
+#define GET_TID  __TID(_I,_J,_K, _i, _j, _k)
+#define DEFINE_I_J_K auto &_I = blockIdx.y; \
+            auto & _J = blockIdx.x; \
+            auto & _K = blockIdx.z; \
+            auto & _i = threadIdx.y; \
+            auto & _j = threadIdx.x; \
+            auto & _k = threadIdx.z; \
+            auto & _COLS = gridDim.x; \
+            auto & _ROWS = gridDim.y; \
+            auto & _CHANNELS = gridDim.z; \
+            auto & _cols = blockDim.x; \
+            auto & _rows = blockDim.y; \
+            auto & _channels = blockDim.z;
+
+#define DEFINE_I_J_K_idx  DEFINE_I_J_K;auto idx = GET_TID;
+            
 
 static void CheckCudaErrorAux(const char *file, unsigned line, const char *statement, cudaError_t err)
 {
     if (err == cudaSuccess)
         return;
     std::cerr << statement << " returned " << cudaGetErrorString(err) << "(" << err << ") at " << file << ":" << line << std::endl;
+    system("pause"); 
     exit(1);
 }
 
@@ -5854,26 +5867,58 @@ using std::endl;
 #endif
 
 
-const static int rows = 2; 
-const static int cols = 5; 
+static const int rows = 4;
+static const int cols = 5;
 
+//static int global_int_a = 0;
 
 __device__ __host__ 
 inline float ker_opt(float &f, int idx)
 {
-    return 1.0f * f + idx * 1.0f;
+    return 2.0f * f + idx * 0.0f;
 }
+
+#if 0
+__device__
+class A
+{
+public:
+    __device__ inline A()
+    {
+        x = 1; 
+        y = 9;
+    }
+    __device__ inline ~A() {}
+    int x; 
+    int y; 
+
+
+};
+#endif 
+
+extern __shared__ char abc[]; 
+
+
 
 __global__ void testKernel(float *gpu_data_input, float *gpu_data_output, int size)
 {
-    DEFINE_I_J_K;
+#if 1
+    DEFINE_I_J_K_idx;
 
 
-    extern __shared__ float shared[];
+    auto &idx_v = gpu_data_output[idx] = ker_opt(gpu_data_input[idx], idx);
 
-    uint64_t idx = GET_TID;
-    assert(idx < rows * cols);
-    gpu_data_output[idx] = ker_opt(gpu_data_input[idx], (int)idx);
+    if (_J == 0 || _J == _COLS - 1 || _j == 0 || _j == _cols - 1)
+    {
+        idx_v = 0;
+    }
+
+    if (_J == _j)
+    {
+        idx_v = 0;
+    }
+
+#endif 
 
 }
 
@@ -5909,6 +5954,9 @@ float * cpu_cal(float *raw_data)
 
 float *gpu_cal(float *raw_data)
 {
+
+
+
     cudaError_t error;
     auto size = rows * cols; 
 
@@ -5919,16 +5967,35 @@ float *gpu_cal(float *raw_data)
 
     CUDA_CHECK_RETURN(cudaMalloc((void **)&gpu_raw_data_input, sizeof(float)*size));
     CUDA_CHECK_RETURN(cudaMalloc((void **)&gpu_raw_data_output, sizeof(float)*size));
-
     CUDA_CHECK_RETURN(cudaMemcpy(gpu_raw_data_input, raw_data, sizeof(float)*size, cudaMemcpyHostToDevice));
 
+
+#if 0
     dim3 dimGrid(rows, 1, 1);
     dim3 dimBlock(cols, 1, 1);
+    uint Ns = 1024;
+#endif 
+#if 1
+    dim3 dimGrid(rows, 1, 1);
+    dim3 dimBlock(cols, 1, 1);
+    uint Ns = 1024;
+#endif 
 
-    testKernel<<<dimGrid, dimBlock>>>(gpu_raw_data_input, gpu_raw_data_output, size);
 
+
+    
+
+
+
+    testKernel<<<dimGrid, dimBlock, Ns*sizeof(char)>>>(gpu_raw_data_input, gpu_raw_data_output, size);
+    //testKernel <<<dimGrid, dimBlock, Ns*sizeof(char) >>>(arr_gpu_raw_data_input, arr_gpu_raw_data_output, size);
+
+    
     //Synchronize (flushes assert output).
  
+
+
+
     error = cudaDeviceSynchronize();
 
 
@@ -5972,6 +6039,7 @@ void show_cuda_info(int flag_show)
 }
 
 
+__device__ __managed__ int arr_0[9]; 
 // st__
 int main(int argc, char **argv)
 {
@@ -5981,27 +6049,55 @@ int main(int argc, char **argv)
 
     //jd add
     float *raw_data = initialize_raw_data();   // mem 0
+
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            auto &t = raw_data[i*cols + j] = (i*cols + j) * 1.0f; 
+
+            printf("%4d ", (int)t);
+        }
+        cout << endl;
+
+
+    }
+
+
     float *cpu_ret = cpu_cal(raw_data); // mem 1
     float *gpu_ret = gpu_cal(raw_data); // mem 2
     
+    cout << endl; 
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            auto &t = gpu_ret[i*cols + j]; // = (i + j) * 1.0f;
+            printf("%4d ",  (int)t);
+        }
+        cout << endl; 
+    }
+
     DEL_ARR_MEM(raw_data); // del 0
 
     float cpu_sum = std::accumulate(cpu_ret, cpu_ret + rows * cols, 0.0f);
     float gpu_sum = std::accumulate(gpu_ret, gpu_ret + rows * cols, 0.0f);
 
-
+#if 0
     for (int i = 0; i < rows * cols; i++)
     {
         cout << i << ": " << cpu_ret[i] << endl;
         cout << i << ": " << gpu_ret[i] << endl; 
         cout << endl; 
-    }
-
+    } 
+    printf("%f == %f\n", cpu_sum, gpu_sum);
+#endif 
+    
 
     DEL_ARR_MEM(cpu_ret); // del 1
     DEL_ARR_MEM(gpu_ret); // del 2
 
-    printf("%f == %f\n", cpu_sum, gpu_sum);
+   
 
 
     //jd end 
