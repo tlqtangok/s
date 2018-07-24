@@ -6110,3 +6110,20 @@ int main(int argc, char **argv)
 //static const int rows = ((1 << 19) - 1 )/1000;  // 524287
 //static const int cols = 1024;
 
+
+### sscanf to parse string to number int float 
+
+    string abc = "5.6    6.77778  8888.88887"; 
+    std::string::size_type sz = 0; 
+    auto sz_cache = sz; 
+    
+    char buf_0[12];
+    char buf_1[12];
+    char buf_2[12];
+
+    sscanf(abc.c_str(), "%11s%11s%11s", buf_0, buf_1, buf_2);
+
+    printf("___%f___\n", atof(buf_0) + 1000000.0);
+    printf("___%f___\n", atof(buf_1) + 1000000.0);
+    printf("___%f___\n", atof(buf_2) + 1000000.0);
+
