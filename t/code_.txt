@@ -6127,3 +6127,4 @@ int main(int argc, char **argv)
     printf("___%f___\n", atof(buf_1) + 1000000.0);
     printf("___%f___\n", atof(buf_2) + 1000000.0);
 
+1
