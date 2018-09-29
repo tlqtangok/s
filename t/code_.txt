@@ -6130,3 +6130,130 @@ int main(int argc, char **argv)
 # access or delete old file , of_0, clear old content 
     ofstream of_0(fn_out_sam.c_str(), ios::binary); assert(of_0.is_open()); of_0.close();
 	ofstream of_(fn_out_sam.c_str(), ios::app); assert(of_.is_open());
+//#include "common.hpp"
+/*
+ * jd create at 2018-02-28
+ * to build & run on Linux, just run :
+ * make
+ */
+//#pragma once
+#pragma warning(disable:4996)
+#pragma warning(disable:4018)
+
+#include <iostream>
+#include <fstream>
+
+#include <string>
+#include <sstream>
+#include <vector>
+#include <stdint.h>  // uint64_t
+#include <assert.h>
+
+#include <vector>
+#include <sstream>
+//#include <unordered_map>
+#include <map>
+#include <algorithm>    // std::sort
+#include <utility>
+
+#include <stack>
+#include <memory.h>
+#include <stdlib.h>
+#include <math.h>
+#include <string.h>
+#include <errno.h>
+#include <time.h>
+//#include <thread>
+//#include <mutex>
+
+#if __linux___
+#include <stdio.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <htslib/faidx.h>
+#include <strings.h>
+#include <getopt.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include "htslib/tbx.h"
+#include "htslib/sam.h"
+#include "htslib/vcf.h"
+#include "htslib/kseq.h"
+#include "htslib/bgzf.h"
+#include "htslib/hts.h"
+#include "htslib/regidx.h"
+#include <unordered_map>
+#include <iomanip>
+#include <list>
+#include "hfile_internal.h"
+#include <unistd.h>
+#include <sys/time.h>
+#include <numeric>
+#include <float.h>
+
+#endif
+
+
+#ifdef __linux__
+#define __P__  return 0;   //__
+#else
+#define __P__  system("pause");return 0;   //__
+#define popen(fp, fr) _popen((fp),(fr))
+#define pclose(fp) _pclose(fp)
+#endif
+
+#define DEL_ARR_MEM(P) if(NULL != (P)){delete [] (P); (P) = NULL;}
+#define DEBUG 1 //DEBUG=1, use debug version, vice versa.
+#define FLAG_USE_MULTI_THREAD 0 //thr_, FLAG_USE_MULTI_THREAD = 0, single thread; FLAG_USE_MULTI_THREAD = 1, MultiThread.
+#define E_BATCH_NUM_BR 40000  //e_batch_num_br = 10000
+#define TD_NUM_BR 4 //td_num_br = 20
+#define E_BATCH_NUM_PR 1 //e_batch_num_pr = 10000
+#define TD_NUM_PR 1 //td_num_pr = 20
+
+#define AUTOTEST 0
+#define br_Ana 0 //br_Ana = 1, pr_Ana = 0, only run br; br_Ana = 1, pr_Ana = 1, both no run.
+#define pr_Ana 1 //br_Ana = 0, pr_Ana = 1, only run pr; br_Ana = 0, pr_Ana = 0, both run.
+
+#define dq_adv 1 //dq_adv = 1, advanced computing of deltaQ
+#define should_have_argc 13
+
+
+using namespace std;
+
+template<typename T>
+string to_string_(T n){
+        ostringstream ss;
+        ss << n ;
+        return ss.str();
+
+}
+
+#define S_(x) to_string_((long int)(x))
+
+// main_
+int main(int argc, char **argv)
+{
+
+        for (int i=0;i<1e5;i++)
+        {
+
+                int a = 99;
+                string env_n = "env_n";
+                string env_statement = env_n + "=" + S_(&a);
+
+                //cout <<  env_statement << endl;
+
+                putenv(&env_statement[0]);
+
+                char *env_n_str = &env_n[0];
+                //printf("env_n=%s" "\n", getenv(env_n_str));
+                //cout << endl;
+
+                int aa  = *(int*)(atol(getenv(env_n_str)));
+                //cout << aa << endl;
+                assert( a== aa);
+        }
+        return 0;
+}
+
