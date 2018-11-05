@@ -6257,3 +6257,28 @@ int main(int argc, char **argv)
         return 0;
 }
 
+cout << "01234"[2] << endl; 
+
+// get time , in pure c code , no cv time diff 
+#if 1 	
+	//{
+	//#include <time.h>
+	auto diff_in_seconds_jd = [](timeval *end, timeval *start)
+	{
+		double sec;
+		sec=(end->tv_sec - start->tv_sec);
+		sec+=(end->tv_usec - start->tv_usec)/1000000.0;
+		return sec;
+	};
+
+	struct timeval start, end;
+	gettimeofday (&start, NULL);
+	system("sleep 2s"); 
+	gettimeofday (&end, NULL);
+	auto time_used = diff_in_seconds_jd(&end, &start); 
+	printf("- time used : %f\n", time_used); 
+
+	//}
+#endif 
+
+
