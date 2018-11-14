@@ -6281,4 +6281,7 @@ cout << "01234"[2] << endl;
 	//}
 #endif 
 
+#include <time.h>
+	fprintf(stderr, "%.2f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC);
 
+Wed Nov 14 16:20:43 CST 2018
