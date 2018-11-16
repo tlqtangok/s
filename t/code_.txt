@@ -6285,3 +6285,14 @@ cout << "01234"[2] << endl;
 	fprintf(stderr, "%.2f sec\n", (float)(clock() - t) / CLOCKS_PER_SEC);
 
 Wed Nov 14 16:20:43 CST 2018
+*********************
+repair_cuda_8_0.sh
+*********************
+sudo /usr/local/cuda-8.0/bin/uninstall_cuda_8.0.pl
+sudo /usr/bin/nvidia-uninstall
+sudo sh cuda_8.0.61_375.26_linux.run
+nvidia-smi
+
+
+EOF
+
