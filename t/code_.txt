@@ -6296,4 +6296,3 @@ nvidia-smi
 
 EOF
 
-1
