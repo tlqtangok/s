@@ -6293,7 +6293,4 @@ sudo /usr/bin/nvidia-uninstall
 sudo sh cuda_8.0.61_375.26_linux.run
 nvidia-smi
 
-
 EOF
-
-1
