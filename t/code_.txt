@@ -6294,3 +6294,12 @@ sudo sh cuda_8.0.61_375.26_linux.run
 nvidia-smi
 
 EOF
+
+                dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+                java.util.Date date_end = new java.util.Date();
+                logger.info("Date/Time: " + dateFormat.format(date_end));
+
+                long diffInMillies = Math.abs(date_end.getTime() - date_start.getTime());
+                long diff = TimeUnit.SECONDS.convert(diffInMillies,TimeUnit.MILLISECONDS);
+                logger.info("- Time Diff: " + diff + " s");
+
