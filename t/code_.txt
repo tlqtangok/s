@@ -6303,3 +6303,11 @@ EOF
                 long diff = TimeUnit.SECONDS.convert(diffInMillies,TimeUnit.MILLISECONDS);
                 logger.info("- Time Diff: " + diff + " s");
 
+reserve is bytes, resize is N * sizeof(A);
+
+#if 1
+    vector<int> a{};
+    a.resize(1);   // if use a.reserve, will error 
+    a[0] = 77; 
+#endif
+
