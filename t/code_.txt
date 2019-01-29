@@ -6311,3 +6311,94 @@ reserve is bytes, resize is N * sizeof(A);
     a[0] = 77; 
 #endif
 
+#if 0
+	auto td_0_0 = std::thread([](int &x, int &y) {printf("- 0: %d, %d\n", x, y); }, std::ref(x), std::ref(y));
+	auto td_0_1 = std::thread([](int &x, int &y) {printf("- 1: %d, %d\n", x, y); }, std::ref(x), std::ref(y));
+
+	td_0_0.join();
+	td_0_1.join();
+#endif 
+
+
+
+#if 1
+
+   // split data , and use that in each_thread 
+
+    vector<std::pair<int, int> > arr_pair_i_i{};
+    
+    const int N = 2e2 + 1;
+    int mod_num = 200;
+    arr_pair_i_i.resize( N % mod_num == 0? N/mod_num : N/mod_num + 1);
+
+    int cnt = 0;
+    int cnt_arr = 0;
+
+
+    
+
+
+    while (cnt < N)
+    {
+
+            //cout << cnt << endl;
+            auto& e_pair = std::make_pair(cnt, cnt + mod_num > N ? N : cnt + mod_num);
+            arr_pair_i_i[cnt / mod_num] = e_pair;
+            //cnt_arr++;
+        cnt += mod_num;
+    }
+
+   // cout << cnt << endl; 
+
+    for (auto &e : arr_pair_i_i)
+    {
+        cout << "[" << e.first << " => " << e.second << ")" << endl; 
+    }
+
+
+    vector<float> arr_src{};
+    arr_src.resize(N); 
+    cnt = 0; 
+    for (auto &e : arr_src)
+    {
+        e = cnt++;
+    }
+
+#if 1
+    int id_td = 0; 
+    for (auto &e_args : arr_pair_i_i)
+    {
+       
+        auto e_td = std::thread(
+            /* exec_e_td() */
+            [](vector<float> &arr_src, std::pair<int, int>& pair_i_i, int& id_td) {
+
+
+            cout << "- id_td: " << id_td << endl; 
+            system("sleep 1s");
+            for (int i = pair_i_i.first; i < pair_i_i.second; i++)
+            {
+                cout << arr_src[i] << " ";
+            }
+            cout << endl;
+        },
+            std::ref(arr_src),
+            std::ref(e_args), 
+            std::ref(id_td)
+            );
+
+        e_td.detach();
+        id_td++;
+    }
+#endif 
+        
+    cnt = 5;
+    while (cnt--)
+    {
+        system("sleep 1s");
+    }
+
+
+#endif 
+
+
