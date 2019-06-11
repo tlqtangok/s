@@ -6552,6 +6552,74 @@ int main(int argc, char **argv)
 
 // read file to fc , and then split it to vector string
 
+vector<string> split_str_2_vec(const string & str, const char & delimiter = '\t', const int & retainNum = -1, int flag_push_tail_str = 0);
+vector<string> split_str_2_vec(const string & str, const char & delimiter, const int & retainNum, int flag_push_tail_str)
+{
+    std::vector<std::string>   vec_ret{};
+    vec_ret.reserve(16);
+
+    std::stringstream  data(str);
+
+    std::string line;
+    if (retainNum == -1)
+    {
+        if (delimiter == ' ')
+        {
+            while (std::getline(data, line, delimiter)) // assume
+            {
+                // Note: if multiple delimitor in the source string,
+                //           you may see many empty item in vector
+                if (line == "") continue;
+                vec_ret.push_back(line);
+            }
+            return vec_ret;
+        }
+        while (std::getline(data, line, delimiter))     // assume
+        {
+            // Note: if multiple delimitor in the source string,
+            //       you may see many empty item in vector
+            vec_ret.push_back(line);
+        }
+    }
+    else
+    {
+        if (delimiter == ' ')
+        {
+            int cnt = 0;
+            while (std::getline(data, line, delimiter)) // assume
+            {
+                if (cnt >= retainNum) break;
+                if (line == "") continue;
+                vec_ret.push_back(line);
+                cnt++;
+            }
+            return vec_ret;
+        }
+        int cnt = 0;
+        while (cnt < retainNum && std::getline(data, line, delimiter))     // assume
+        {
+            //if (cnt >= retainNum) break;
+            vec_ret.push_back(line);
+            cnt++;
+        }
+    }
+
+    if (flag_push_tail_str)
+    {
+        std::getline(data, line, '\a');
+        vec_ret.push_back(line);
+    }
+    return vec_ret;
+}
+
+
+
+// st__ main_
+int main(int argc, char **argv)
+{
+
+
+
 #if 1
 
     ifstream if_("E:/jd/t/1.txt");
@@ -6576,3 +6644,4 @@ int main(int argc, char **argv)
 
 #endif 
 
+} 
