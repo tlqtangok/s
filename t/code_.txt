@@ -6550,3 +6550,29 @@ int main(int argc, char **argv)
 	__P__;
 }
 
+// read file to fc , and then split it to vector string
+
+#if 1
+
+    ifstream if_("E:/jd/t/1.txt");
+
+    assert(if_.is_open()); 
+  
+    std::stringstream fc_;
+    fc_ << if_.rdbuf(); 
+    auto &fc = fc_.str();
+
+
+   cout << "___" << fc << "___" << endl;
+
+   auto id_v = split_str_2_vec(fc, ' ', 3);
+   for (auto &e : id_v)
+   {
+       cout << "___" << e << "___" << endl;
+   }
+    
+    if_.close();
+
+
+#endif 
+
