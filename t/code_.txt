@@ -6645,3 +6645,14 @@ int main(int argc, char **argv)
 #endif 
 
 } 
+// std::transform 
+
+#if 1
+    string e_str = "ABCD";
+    string e_str_ = std::string(e_str);
+
+    std::transform(e_str.begin(), e_str.end(), e_str_.begin(), [](char e_c) {return e_c + 1; });
+    cout << e_str << endl; 
+    cout << e_str_ << endl; 
+#endif
+
