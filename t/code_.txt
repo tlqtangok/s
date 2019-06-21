@@ -6656,3 +6656,31 @@ int main(int argc, char **argv)
     cout << e_str_ << endl; 
 #endif
 
+// a way to use range R in c++
+#define R(N) vector<int>(arr + 0, arr + N)
+#define range(M,N) vector<int>(arr + M, arr + N)
+
+
+
+// st__ main_
+int main(int argc, char **argv)
+{
+
+#if 1
+
+    int arr[1024] = { 0 };
+    int cnt = 0;
+    for (auto &e : arr)
+    {
+        e = cnt++;
+    }
+
+    for (auto i : R(9))
+    {
+        cout << i << endl; 
+    }
+    
+#endif
+
+}
+
