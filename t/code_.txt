@@ -6684,3 +6684,5 @@ int main(int argc, char **argv)
 
 }
 
+// std error stderr 
+std::cerr << endl << "- cnt_bad_base : " << cnt_bad_base << endl;
