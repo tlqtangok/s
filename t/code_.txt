@@ -6686,3 +6686,76 @@ int main(int argc, char **argv)
 
 // std error stderr 
 std::cerr << endl << "- cnt_bad_base : " << cnt_bad_base << endl;
+
+
+// c++ calculate crc crc64
+const int sz_crc = 256;
+uint64_t table[sz_crc];
+
+
+void generate_crc_table()
+{
+    uint64_t poly = 0xC96C5795D7870F42;
+    for (int i = 0; i<sz_crc; ++i)
+    {
+        uint64_t crc = i;
+
+        for (int j = 0; j<8; ++j)
+        {
+            // is current coefficient set?
+            if (crc & 1)
+            {
+                // yes, then assume it gets zero'd (by implied x^64 coefficient of dividend)
+                crc >>= 1;
+
+                // and add rest of the divisor
+                crc ^= poly;
+            }
+            else
+            {
+                // no? then move to next coefficient
+                crc >>= 1;
+            }
+        }
+
+        table[i] = crc;
+    }
+}
+
+
+uint64_t calculate_crc(const string& stream)
+{
+
+    uint64_t crc = 0;
+    auto n = stream.size();
+    for (uint64_t i = 0; i<n; ++i)
+    {
+        char index = stream[i] ^ crc;
+        uint64_t lookup = table[index];
+
+        crc >>= 8;
+        crc ^= lookup;
+    }
+
+    return crc;
+}
+
+
+
+
+#endif 
+
+// st__ main_
+int main(int argc, char **argv)
+{
+
+#if 1
+    generate_crc_table();
+    cout << calculate_crc(string("xxxxx")) << endl;;
+
+
+
+
+#endif
+}
+
