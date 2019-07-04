@@ -6691,8 +6691,6 @@ std::cerr << endl << "- cnt_bad_base : " << cnt_bad_base << endl;
 // c++ calculate crc crc64
 const int sz_crc = 256;
 uint64_t table[sz_crc];
-
-
 void generate_crc_table()
 {
     uint64_t poly = 0xC96C5795D7870F42;
@@ -6718,7 +6716,7 @@ void generate_crc_table()
             }
         }
 
-        table[i] = crc;
+        table_crc[i] = crc;
     }
 }
 
@@ -6728,10 +6726,10 @@ uint64_t calculate_crc(const string& stream)
 
     uint64_t crc = 0;
     auto n = stream.size();
-    for (uint64_t i = 0; i<n; ++i)
+    for (int i = 0; i<n; ++i)
     {
-        char index = stream[i] ^ crc;
-        uint64_t lookup = table[index];
+        auto index = stream[i] ^ crc;
+        uint64_t lookup = table_crc[index];
 
         crc >>= 8;
         crc ^= lookup;
