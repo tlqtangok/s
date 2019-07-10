@@ -6757,3 +6757,23 @@ int main(int argc, char **argv)
 #endif
 }
 
+// run_cmd() c++ 
+
+string run_cmd(const string& cmd){
+	FILE *pf = popen(cmd.c_str(), "r");
+	const int TO_READ_SZ = 1023;
+	const char end_c = '\n'; 
+	string res = string(TO_READ_SZ + 1, end_c); 
+
+	if ( 0 != fread((void*)(res.data()),TO_READ_SZ, 1, pf))
+	{
+		printf( "- cannot run system cmd %s\n", cmd ); 
+		pclose(pf);
+		assert(0==1);
+		return string("NULL"); 
+	};
+	pclose(pf);
+	res.erase(res.find_last_not_of(" \n\r\t\0") + 1);
+	return res;
+}
+
