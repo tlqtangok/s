@@ -6804,8 +6804,98 @@ int main(int argc, char **argv)
         cout << q_s.front() << endl;
         q_s.pop();
         break;
-
     }
     if_.close();
 #endif 
+}
+
+// read and process each line simutenously , parallelly 
+#include <deque>
+#include <queue>
+
+// st__ main_
+int main(int argc, char **argv)
+{
+
+
+#if 1
+    int N = 9;
+    vector<string> v_s; 
+    v_s.resize(N); 
+
+    vector<string> v_s_copy;
+    v_s_copy.resize(N);
+
+    int cnt = 0;
+    int round = 0;
+    ifstream if_("./data/1.txt"); assert(if_.is_open());
+    string es;
+
+    auto deal_with_v_s = [](vector<string>* p_v_s_) 
+    {
+       
+        sleep(100 * 1e-3);
+        for (auto &e : *p_v_s_)
+        {
+            cout << e.substr(0, 11) << endl;
+        }
+        cout << endl; 
+    };
+
+    auto *p_v = &v_s; 
+
+    thread id_t0;
+
+    while ( std::getline(if_, es) )
+    {
+        if (cnt == N)
+        {
+            cnt = 0;
+            
+            if (id_t0.joinable())
+            {
+               
+                id_t0.join();
+            }
+
+            id_t0 = thread(deal_with_v_s, p_v);
+            
+            if (round % 2 == 1)
+            {
+                p_v = &v_s;
+            }
+            else
+            {
+                p_v = &v_s_copy;
+            }
+            
+            round++;
+        }
+
+        (*p_v)[cnt] = es;     
+        cnt++;
+    }
+
+    if_.close();
+
+
+// this is a thread need joinable
+    if (id_t0.joinable())
+    {
+        cout << "- in last joinable\n";
+        id_t0.join();
+    }
+
+
+    // for the tail group
+    cout << "- in tail\n";
+    for (int i = 0; i < cnt; i++)
+    {
+        cout << (*p_v)[i].substr(0,11) << endl;
+    }
+
+
+#endif 
+
+}
 
