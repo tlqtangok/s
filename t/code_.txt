@@ -6777,3 +6777,35 @@ string run_cmd(const string& cmd){
 	return res;
 }
 
+#include <deque>
+#include <queue>
+
+
+// st__ main_
+int main(int argc, char **argv)
+{
+
+#if 1
+    ifstream if_("./data/1.fq"); assert(if_.is_open());
+    
+    std::queue<string> q_s; 
+    
+    string es = "NULL"; 
+
+    while (std::getline(if_, es))
+    {
+        q_s.push(es);
+    }
+
+
+    while (!q_s.empty())
+    {
+       
+        cout << q_s.front() << endl;
+        q_s.pop();
+        break;
+
+    }
+    if_.close();
+#endif 
+
