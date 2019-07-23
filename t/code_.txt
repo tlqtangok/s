@@ -6935,3 +6935,95 @@ int main(int argc, char **argv)
 
 #endif 
 
+### perl key getchar getc byte
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use IO::Handle;
+
+eval {
+    my $stdin = new IO::Handle;
+       $stdin->fdopen( fileno( STDIN ), "r" ) || die "Cannot open STDIN";
+
+    system "stty -icanon -isig -echo min 1 time 0";
+    my $escape;
+    my $ctrl;
+    my $function;
+
+    while ( my $char = $stdin->getc() ) 
+	{
+
+        if ( ord( $char ) == 27 ) {             # Escape character
+            $escape = 1;
+            print "ESC + ";
+            next;
+        }
+        if ( $escape && ord( $char ) == 91 ) {  # Control character
+            $ctrl = 1;
+            print "CTRL + ";
+            next;
+        }
+
+        if ( $escape && $ctrl && $function && ord( $char ) == 126 ) {
+            undef $escape;                      # Clean up after Fnctn key
+            undef $ctrl;
+            undef $function;
+            next;
+        }
+
+        if ( $escape && $ctrl && !$function ) {
+            print "Up\n"     if ( ord( $char ) == 65 );  # up
+            print "Down\n"   if ( ord( $char ) == 66 );  # down
+            print "Right\n"  if ( ord( $char ) == 67 );  # right arrow
+            print "Left\n"   if ( ord( $char ) == 68 );  # left arrow
+            if ( ord( $char ) == 49 ) {                  # Function character
+                $function = 1;
+                print "FCN + ";
+            } else {                                     # Clean up for arrow keys
+                undef $escape;
+                undef $ctrl;
+            }
+            next;
+        }
+
+        if ( $escape && $ctrl && $function ) {
+            print "F5\n"     if ( ord( $char ) == 53 ); # F5 key
+            print "F6\n"     if ( ord( $char ) == 55 ); # F6 key
+            print "F7\n"     if ( ord( $char ) == 56 ); # F7 key
+            print "F8\n"     if ( ord( $char ) == 57 ); # F8 key
+                                                        # wait for clean up char
+            next;
+        }
+
+        if ( $escape && !$ctrl && !$function ) {
+            print "F1\n" if ( ord( $char ) == 80 );  # F1 key
+            print "F2\n" if ( ord( $char ) == 81 );  # F2 key
+            print "F3\n" if ( ord( $char ) == 82 );  # F3 key
+            print "F4\n" if ( ord( $char ) == 83 );  # F4 key
+            undef $escape;                           # Clean up
+            next;
+        }
+
+        print "Return\n" if ( ord( $char ) == 10 );  # return key
+        print "Delete\n" if ( ord( $char ) == 127 ); # delete key
+        print "Tab\n"    if ( ord( $char ) == 9 );   # tab key
+        next             if ( ord( $char ) == 32 );  # skip on space key
+        last             if ( $char =~ /q/ );        # break on q
+        last             if ( $char =~ /\003/ );     # break on Ctrl-C
+        last             if ( $char =~ /\032/ );     # break on Ctrl-Z
+        print "ord: " . ord($char) . "\n";
+    }
+    system "stty icanon echo isig";
+    exit(0);
+};
+
+if ( $@ ) {
+    print "$@\n";
+    system "stty icanon echo isig";
+    exit(1);
+}
+
+
+
