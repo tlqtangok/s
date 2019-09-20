@@ -7044,5 +7044,62 @@ if ( $@ ) {
     //cin >> e; 
     getline(cin, e);
     cout << "___" << e << "___" << endl; 
+ char a = 'a'; 
+string s_a = string("") + a; 
 
+
+
+# putenv c++ , must not call in function
+inline int  env_it(const char* v_name_0, string var_0, const char* v_name_1, string var_1, bool flag_output=false)
+{
+    //auto  stm = string(v_name) + string("=") + var;
+
+    //auto v_name = "s"; 
+    //auto var =s ;
+    auto stm_0 = string(v_name_0) + "=" + var_0; 
+    auto ret_code_0 =  putenv((char*)(stm_0.c_str()));
+
+    auto stm_1 = string(v_name_1) + "=" + var_1; 
+    auto ret_code_1 =  putenv((char*)(stm_1.c_str()));
+
+    assert(0== ret_code_0);
+    assert(0== ret_code_1); 
+    
+
+    if (flag_output)
+    {
+        cout << stm_0 << endl; 
+        cout << stm_1 << endl; 
+        cout << endl;
+        auto t_0 = getenv(v_name_0); 
+        cout << string(v_name_0) << ":" <<string(t_0) << endl; 
+
+        auto t_1 = getenv(v_name_1); 
+        cout << string(v_name_1) << ":" <<string(t_1) << endl; 
+        
+    }
+
+    //system(" perl -e 'print q{OK 0 }; print $ENV{" "s" "};' ");
+    //system(" perl -e 'print q{OK 0 }; print $ENV{" "a" "};' ");
+
+
+    system("which ls");
+
+
+    system(
+            " perl -e \' \
+            $_______________________________; \
+            $a=$ENV{a}; \
+            $s=$ENV{s}; \
+            @arr=split //,$s; \
+            %h =(); \
+            for(@arr){$h{lc($_)}++}; \
+            print $h{lc($a)};\
+            $_______________________________; \
+            \'  "
+          );
+
+
+    return 0==ret_code_0 && 0==ret_code_1; // 1:OK
+}
 
