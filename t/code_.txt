@@ -7103,3 +7103,44 @@ inline int  env_it(const char* v_name_0, string var_0, const char* v_name_1, str
     return 0==ret_code_0 && 0==ret_code_1; // 1:OK
 }
 
+
+// putenv , call in function, only work on windows
+void env_it(const char* v_name, string var)
+{
+    // only work on windows
+    auto  stm = string(v_name) + string("=") + var;
+    auto ret_code = putenv((char*)(stm.c_str()));
+    assert(0 == ret_code);
+}
+
+
+int main()
+{
+#if 1
+   
+    string s;
+    getline(cin, s);
+
+    char a = 0;
+    cin >> a;
+
+    env_it("s", s);
+    env_it("a", string("")+a);
+
+    system(
+        " perl -e \" \
+                     $_______________________________; \
+                     $a=$ENV{a}; \
+                     $s=$ENV{s}; \
+                     @arr=split //,$s; \
+                     %h =(); \
+                     for(@arr){$h{lc($_)}++}; \
+                     print $h{lc($a)};\
+                     $_______________________________; \
+                     \"  "
+        );
+
+#endif
+
+}
+
