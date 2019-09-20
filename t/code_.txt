@@ -7047,6 +7047,9 @@ if ( $@ ) {
  char a = 'a'; 
 string s_a = string("") + a; 
 
+    char a = 'a';
+    auto sa= to_string(a);
+
 
 
 # putenv c++ , must not call in function
