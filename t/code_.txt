@@ -7564,6 +7564,8 @@ void c_filter_fq::p_s_2_file(vector<string> & v_str, ofstream & of_)
 // cpp_ end 
 
 #endif 
+
+// string to int , float and others 
 #if 1
     auto str2int =[](string str) {
         stringstream ss;
