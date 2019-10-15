@@ -6758,23 +6758,23 @@ int main(int argc, char **argv)
 }
 
 // run_cmd() c++ 
+string run_cmd(const string& cmd)
+{
+    FILE *pf = popen(cmd.c_str(), "r");
+    const int TO_READ_SZ = 1023;
+    const char end_c = '\n';
+    string res = string(TO_READ_SZ + 1, end_c);
 
-string run_cmd(const string& cmd){
-	FILE *pf = popen(cmd.c_str(), "r");
-	const int TO_READ_SZ = 1023;
-	const char end_c = '\n'; 
-	string res = string(TO_READ_SZ + 1, end_c); 
-
-	if ( 0 != fread((void*)(res.data()),TO_READ_SZ, 1, pf))
-	{
-		printf( "- cannot run system cmd %s\n", cmd ); 
-		pclose(pf);
-		assert(0==1);
-		return string("NULL"); 
-	};
-	pclose(pf);
-	res.erase(res.find_last_not_of(" \n\r\t\0") + 1);
-	return res;
+    if (0 != fread((void*)(res.data()), TO_READ_SZ, 1, pf))
+    {
+        printf("- cannot run system cmd %s\n", cmd.c_str());
+        pclose(pf);
+        assert(0 == 1);
+        return string("NULL");
+    };
+    pclose(pf);
+    res.erase(res.find_last_not_of(" \n\r\t\0") + 1);
+    return res;
 }
 
 #include <deque>
@@ -7326,7 +7326,7 @@ string c_filter_fq::run_cmd(const string& cmd){
 
 	if ( 0 != fread((void*)(res.data()),TO_READ_SZ, 1, pf))
 	{
-		printf( "- cannot run system cmd %s\n", cmd ); 
+		printf( "- cannot run system cmd %s\n", cmd.c_str() ); 
 		pclose(pf);
 		assert(0==1);
 		return string("NULL"); 
@@ -7564,3 +7564,18 @@ void c_filter_fq::p_s_2_file(vector<string> & v_str, ofstream & of_)
 // cpp_ end 
 
 #endif 
+#if 1
+    auto str2int =[](string str) {
+        stringstream ss;
+        ss << str;
+        int i;
+        ss >> i;
+        return i;
+    };
+
+    auto t = str2int("33"); 
+    cout << t+1  << endl; 
+
+#endif 
+
+
