@@ -7582,3 +7582,13 @@ void c_filter_fq::p_s_2_file(vector<string> & v_str, ofstream & of_)
 
 
         static constexpr float N_num_rate_threshold = 0.06f; 
+#if 0
+char buf[1024]; 
+    sprintf(buf, 
+            "%d\n"
+            "%d",
+            44,55); 
+cout << string(buf); 
+#endif 
+
+
