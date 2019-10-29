@@ -7580,8 +7580,11 @@ void c_filter_fq::p_s_2_file(vector<string> & v_str, ofstream & of_)
 
 #endif 
 
-
+# member static const float, must constexpr 
         static constexpr float N_num_rate_threshold = 0.06f; 
+
+
+
 #if 0
 char buf[1024]; 
     sprintf(buf, 
@@ -7591,4 +7594,12 @@ char buf[1024];
 cout << string(buf); 
 #endif 
 
+
+#if 1
+    uint64_t t = 0; 
+    uint64_t t1 = 100; 
+    uint64_t t2 = 25574639; 
+    t += t1*t2; 
+    printf("%lu\n", t); 
+#endif 
 
