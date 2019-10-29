@@ -7581,3 +7581,4 @@ void c_filter_fq::p_s_2_file(vector<string> & v_str, ofstream & of_)
 #endif 
 
 
+        static constexpr float N_num_rate_threshold = 0.06f; 
