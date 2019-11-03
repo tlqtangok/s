@@ -7625,3 +7625,9 @@ cout << string(buf);
 #endif 
             auto k_ = string{ v_[i + 0],v_[i + 1],v_[i + 2],v_[i + 3] };
 
+// member var cannot be caught by lambda 
+    auto exists_m_sym_k = [&map_sym_val = map_sym_val](char k)
+    {
+        return  map_sym_val.find(k) != map_sym_val.end();
+    };
+
