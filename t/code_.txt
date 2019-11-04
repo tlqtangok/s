@@ -7631,3 +7631,456 @@ cout << string(buf);
         return  map_sym_val.find(k) != map_sym_val.end();
     };
 
+
+
+// a thought works tw home work  20191103
+//cpp_ add 
+
+#include <iostream>
+#include <fstream>
+
+#include <string>
+#include <sstream>
+#include <vector>
+#include <assert.h>
+
+#include <vector>
+#include <unordered_map>
+
+
+
+#include "line_parser.hpp"
+using namespace std; 
+
+bool line_parser::pre_c_in_vector(vector<char>& v_, char pre_c)
+{
+    bool flag_in = false; 
+    for(auto ev: v_)
+    {
+        if (ev == pre_c)
+        {
+            flag_in = true; 
+            break;
+        }
+    }
+    return flag_in;  
+}
+
+void line_parser::say_line_ans()
+{
+    if (type_line_ans == VALID_QUESTION)
+    {
+        cout << line_ans << endl;
+    }
+    else if (type_line_ans == ERROR_ROMAN_SERIALS || type_line_ans == ERROR_LINE)
+    {
+        cout << "I have no idea what you are talking about" << endl;
+    }
+}
+
+int line_parser::v_roman2sum(vector<char>& v_sym)
+{
+    auto len = v_sym.size();
+    int sum = 0;
+    int i = 0;
+    for (i = 0; i<len - 1; i++)
+    {
+        int pre = map_sym_val[v_sym[i]];
+        int next = map_sym_val[v_sym[i + 1]];
+        if (pre < next)
+        {
+            sum += next - pre;
+            i++;
+        }
+        else
+        {
+            sum += pre;
+        }
+
+    }
+
+    if (i == len - 1)
+    {
+        int pre = map_sym_val[v_sym[i]];
+        sum += pre;
+    }
+
+    return sum;
+}
+
+float line_parser::cal_units(vector<char>& v_sym, int value)
+{
+    auto sum = v_roman2sum(v_sym);
+    return value * 1.0f / sum;
+}
+
+bool line_parser::valid_roman_serial(vector<char>& v_roman)
+{
+    auto exists_m_repeat_k = [&map_repeat_pat = map_repeat_pat](string k)
+    {
+        return  map_repeat_pat.find(k) != map_repeat_pat.end();
+    };
+
+    auto exists_m_substract_k = [&map_strsym_flag = map_strsym_flag](string k)
+    {
+        return  map_strsym_flag.find(k) != map_strsym_flag.end();
+    };
+
+
+    bool ret_code = true;
+    const int sz = 4;
+    auto len = v_roman.size();
+    auto &v_ = v_roman;
+    int flag_repeat_overflow = 0;
+    if (len < sz)
+    {
+        flag_repeat_overflow = 0;
+    }
+    else
+    {
+        for (int i = 0; i < len - sz + 1; i += 1)
+        {
+            auto k_ = string{ v_[i + 0],v_[i + 1],v_[i + 2],v_[i + 3] };
+            //cout << k_ << endl; 
+            if (exists_m_repeat_k(k_))
+            {
+                flag_repeat_overflow = 1;
+                //cout << "- met repeat pat " << k_ << endl; 
+                break;
+            }
+        }
+    }
+
+    //cout << flag_repeat_overflow << endl;
+
+    int i = 0;
+    int flag_substract_error = 0;
+    for (i = 0; i<len - 1; i++)
+    {
+        char pre_c = v_roman[i + 0];
+        char next_c = v_roman[i + 1];
+
+        int pre = map_sym_val[pre_c];
+        int next = map_sym_val[next_c];
+
+
+        if (pre < next)
+        {
+            //sum += next - pre; 
+            if ( pre_c_in_vector(vec_cannot_be_sub_sym, pre_c) )
+            {
+                flag_substract_error = 1;
+                //cout << pre_c << " cannot be substract" << endl; 
+                break;
+            }
+
+            auto k_ = string{ pre_c, next_c };
+
+            if (exists_m_substract_k(k_))
+            {
+                // ok 
+            }
+            else
+            {
+                if ( pre_c_in_vector(vec_must_be_sub_sym, pre_c) )
+                {
+                    flag_substract_error = 1;
+                    //cout << pre_c << ":" << next_c << endl; 
+                    break;
+                }
+                i++;
+            }
+
+        }
+    }
+
+    //cout << "- flag_substract_error : " << flag_substract_error << endl; 
+
+    if (flag_repeat_overflow == 0 && flag_substract_error == 0)
+    {
+        ret_code = true;
+    }
+    else
+    {
+        ret_code = false;
+    }
+
+    return ret_code;
+}
+
+e_line_type line_parser::line_proc(string& e_line)
+{
+    e_line_type type = line_type(e_line);
+    vector <char> v_sym{};
+    string e_unit = "NULL";
+    line_ans = "";
+    type_line_ans = type;
+    switch (type)
+    {
+    case STR2SYM:
+    {
+        map_str_sym[v_words[0]] = v_words[v_words.size() - 1][0];
+        break;
+    }
+    case CAL_UNITS:
+    {
+        int cnt = 0;
+
+        for (auto e : v_words)
+        {
+            if (e == "is")
+            {
+                break;
+            }
+            if (map_str_sym.find(e) != map_str_sym.end())
+            {
+                v_sym.push_back(map_str_sym[e]);
+            }
+            else
+            {
+                e_unit = e;
+            }
+            cnt++;
+        }
+
+        auto str_value = v_words[cnt + 1];
+        int flag_num = 1;
+        for (auto e_c : str_value) { if (!isdigit(e_c)) { flag_num = 0; break; } }
+
+        if (0 == flag_num)
+        {
+            type = ERROR_LINE;
+            type_line_ans = ERROR_LINE;
+            break;
+        }
+
+        auto value = atoi(str_value.c_str());
+        bool flag_valid_roman_serial = valid_roman_serial(v_sym);
+
+        if (!flag_valid_roman_serial)
+        {
+            type_line_ans = ERROR_ROMAN_SERIALS;
+            break;
+        }
+        auto unit_value = cal_units(v_sym, value);
+        map_units_val[e_unit] = unit_value;
+        //cout << e_unit << "=>" <<  unit_value<< endl;  
+        break;
+    }
+    case VALID_QUESTION:
+    {
+        vector<string> v_question{};
+
+        int cnt = 0;
+        for (auto e : v_words)
+        {
+            if (e == "is")
+            {
+                break;
+            }
+            cnt++;
+        }
+
+        for (int i = cnt + 1; i < v_words.size() - 1; i++)
+        {
+            auto &e_v = v_words[i];
+            //cout << e_v << endl; 
+            if (map_str_sym.find(e_v) != map_str_sym.end())
+            {
+                v_sym.push_back(map_str_sym[e_v]);
+                v_question.push_back(e_v);
+            }
+            else if (map_units_val.find(e_v) != map_units_val.end())
+            {
+                e_unit = e_v;
+                v_question.push_back(e_unit);
+            }
+
+        }
+
+        bool flag_valid_roman_serial = valid_roman_serial(v_sym);
+
+        if (!flag_valid_roman_serial)
+        {
+            type_line_ans = ERROR_ROMAN_SERIALS;
+            break;
+        }
+
+        auto v_sym_num = v_roman2sum(v_sym);
+        int  ret_value = (int)(map_units_val[e_unit] * v_sym_num);
+
+        string str_tail = "Credits";
+        if (e_unit == "NULL")
+        {
+            ret_value = 1 * v_sym_num;
+            str_tail = "";
+        }
+
+        //cout << ret_value << endl;
+
+        for (auto e_v_q : v_question)
+        {
+            //cout << e_v_q << endl; 
+            line_ans += e_v_q + " ";
+        }
+		ostringstream ss;
+		ss << ret_value;
+		line_ans += "is " + ss.str();
+
+        if (str_tail != "")
+        {
+            line_ans += string(" ") + "Credits";
+        }
+        //cout <<"___" <<  line_ans << "___" << endl; 
+        break;
+    }
+    case  ERROR_LINE:
+    {
+        type_line_ans = ERROR_LINE;
+        break;
+    }
+    default:
+    {
+        type_line_ans = ERROR_LINE;
+        break;
+    }
+    };
+
+    return type_line_ans;
+}
+
+line_parser::line_parser()
+{
+    map_sym_val =
+    {
+        { 'I',   1 },
+        { 'V',   5 },
+        { 'X',   10 },
+        { 'L',   50 },
+        { 'C',   100 },
+        { 'D',   500 },
+        { 'M',   1000 },
+    };
+
+    map_repeat_pat =
+    {
+        { "IIII",0 },
+        { "CCCC",0 },
+        { "XXXX",0 },
+        { "MMMM",0 },
+    };
+
+    map_strsym_flag =
+    {
+        { "IV", 1 },
+        { "IX", 1 },
+        { "XL", 1 },
+        { "XC", 1 },
+        { "CD", 1 },
+        { "CM", 1 },
+    };
+
+    vec_must_be_sub_sym = {'I','X','C'}; 
+    vec_cannot_be_sub_sym = {'V','L','D'}; 
+}
+
+vector<string> line_parser::split_str_2_vec(const string & str, const char & delimiter, const int & retainNum, int flag_push_tail_str)
+{
+    //std::vector<std::string>   vec_ret{};
+    auto &vec_ret = v_words;
+    v_words = {};
+    vec_ret.reserve(16);
+
+    std::stringstream  data(str);
+
+    std::string line;
+    if (retainNum == -1)
+    {
+        if (delimiter == ' ')
+        {
+            while (std::getline(data, line, delimiter)) // assume
+            {
+                // Note: if multiple delimitor in the source string,
+                //           you may see many empty item in vector
+                if (line == "") continue;
+                vec_ret.push_back(line);
+            }
+            return vec_ret;
+        }
+        while (std::getline(data, line, delimiter))     // assume
+        {
+            // Note: if multiple delimitor in the source string,
+            //       you may see many empty item in vector
+            vec_ret.push_back(line);
+        }
+    }
+    else
+    {
+        if (delimiter == ' ')
+        {
+            int cnt = 0;
+            while (std::getline(data, line, delimiter)) // assume
+            {
+                if (cnt >= retainNum) break;
+                if (line == "") continue;
+                vec_ret.push_back(line);
+                cnt++;
+            }
+            return vec_ret;
+        }
+        int cnt = 0;
+        while (cnt < retainNum && std::getline(data, line, delimiter))     // assume
+        {
+            //if (cnt >= retainNum) break;
+            vec_ret.push_back(line);
+            cnt++;
+        }
+    }
+
+    if (flag_push_tail_str)
+    {
+        std::getline(data, line, '\a');
+        vec_ret.push_back(line);
+    }
+
+
+    return vec_ret;
+}
+
+e_line_type line_parser::line_type(string &e_line)
+{
+    auto exists_m_sym_k = [&map_sym_val = map_sym_val](char k)
+    {
+        return  map_sym_val.find(k) != map_sym_val.end();
+    };
+
+    split_str_2_vec(e_line);
+
+    if (3 == v_words.size()
+        && v_words[1] == "is"
+        && 1 == v_words[2].size()
+        && exists_m_sym_k(v_words[2][0]))
+    {
+        return STR2SYM;
+    }
+    else if (v_words.size() >= 5
+        && v_words[v_words.size() - 1] == "Credits"
+        && isdigit(v_words[v_words.size() - 2][0]))
+    {
+        return CAL_UNITS;
+    }
+    else if (v_words.size() >= 5
+        && v_words[0] == "how"
+        && (v_words[1] == "many" || v_words[1] == "much")
+        && (v_words[2] == "is" || v_words[2] == "Credits")
+        && v_words[v_words.size() - 1] == "?"
+        )
+    {
+        return VALID_QUESTION;
+    }
+    else
+    {
+        return ERROR_LINE;
+    }
+}
+//cpp_ end
