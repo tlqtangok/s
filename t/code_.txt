@@ -8092,3 +8092,22 @@ e_line_type line_parser::line_type(string &e_line)
     using vi = vector<int>;
     vi id{ 9 };
 
+#if 1
+template <typename... T>
+void fun(T... id_t)
+{
+    cout << sizeof...(id_t) << endl; 
+}
+
+#endif 
+
+// st__ main_
+int main(int argc, char **argv)
+{
+#if 1
+    fun(1, "2");
+
+#endif 
+
+} 
+
