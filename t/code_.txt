@@ -8156,3 +8156,7 @@ v.shrink_to_fit();   // return memory to system
 
 
 
+// c++ raw string 
+
+
+string r0 = R"(73724823478234723*+-//\\\\\\\\\\\)"; 
