@@ -8088,3 +8088,7 @@ e_line_type line_parser::line_type(string &e_line)
 // is_same decltype
     auto arr = new auto(33); 
     cout << std::is_same<decltype(arr), int *>::value << endl; 
+// using usage 
+    using vi = vector<int>;
+    vi id{ 9 };
+
