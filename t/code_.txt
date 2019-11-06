@@ -8111,3 +8111,14 @@ int main(int argc, char **argv)
 
 } 
 
+// lvalue rvalue 
+void reference(std::string& str) {
+	std::cout << "lvalue" << std::endl;
+}
+void reference(std::string&& str) {
+	std::cout << "rvalue" << std::endl;
+}
+
+
+string && rv2 = string("a") + "bbb";  // rvalue
+rv2 = "new"; // lvalue 
