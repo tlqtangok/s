@@ -8122,3 +8122,6 @@ void reference(std::string&& str) {
 
 string && rv2 = string("a") + "bbb";  // rvalue
 rv2 = "new"; // lvalue 
+// to move why fast 
+vector_a.push(std::move(xxxx)); 
+
