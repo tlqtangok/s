@@ -1955,6 +1955,15 @@ mutex g_mutex;
 int g_count = 0;
 int main()
 {
+#if 0
+{
+std::unique_lock <std::mutex > lock(mtx);
+// do something 
+lock.unlock();  
+}
+
+
+#endif 
 	thread thr1([]() {
 			for (int i = 0;i < 5;i++) {
 			lock_guard<mutex> lock(g_mutex); //??
@@ -8124,4 +8133,26 @@ string && rv2 = string("a") + "bbb";  // rvalue
 rv2 = "new"; // lvalue 
 // to move why fast 
 vector_a.push(std::move(xxxx)); 
+
+v.shrink_to_fit();   // return memory to system 
+
+// std::array 
+
+#if 1
+
+    constexpr int LEN = 4; 
+    std::array<int, LEN> arr = { 1,2,3,4 }; 
+
+    auto parr = arr.data(); 
+    auto parr_2 = &arr[0]; 
+
+    cout << arr.size() << endl; 
+
+    cout << parr[2] << endl; 
+    cout << parr_2[2] << endl;
+    assert(parr[2] == parr_2[2]);
+
+#endif 
+
+
 
