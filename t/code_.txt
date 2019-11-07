@@ -8160,3 +8160,9 @@ v.shrink_to_fit();   // return memory to system
 
 
 string r0 = R"(73724823478234723*+-//\\\\\\\\\\\)"; 
+ auto x = std::to_string(4) + "abc"; 
+        cout << x << endl; 
+
+   cout << 100 + std::stoi("445") << endl;;
+ cout << 100 + std::stof("445.001") << endl;;
+
