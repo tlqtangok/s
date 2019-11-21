@@ -8171,6 +8171,7 @@ string r0 = R"(73724823478234723*+-//\\\\\\\\\\\)";
 https://zhuanlan.zhihu.com/p/90673842
 -
 
+###### python opencv cv2 notebook open image and show 
 # pip install opencv-python 
 from __future__ import print_function
 from matplotlib import pyplot as plt
