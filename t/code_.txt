@@ -8214,3 +8214,160 @@ print (id_m)
 plt.imshow(id_m)
 plt.show()
 
+// disable assertion 
+
+c_flag = -O3 -DNDEBUG -Wno-format -fpermissive
+
+*********************
+run_test.PL
+*********************
+#!perl
+
+#######################################################
+=pod
+written by Jidor Tang at 2019-07-11
+
+synopsis:
+    to run test cases for cpp project `filter_fq`
+usage:
+    fill the `global var` with your testcases, and run
+    `perl run_test.PL`, you may use comments amid.
+=cut
+#######################################################
+
+##################
+### global var ###
+##################
+
+my @arr_fn_fq = qw(
+./data/l_1k.fq
+#./data/V30001000_L01_2.fq
+);
+my @td_pool = ();
+my $td_idx :shared = -1;
+my @run_logs_all :shared = ();
+##################
+
+use strict;
+use feature qw(say);
+use threads;
+use threads::shared;
+
+&main();
+
+sub main()
+{
+        qx{make};
+
+        for my $e_fn_fq (@arr_fn_fq)
+    {
+        push @td_pool, threads->create
+        (
+            \&run_each_fq, $e_fn_fq   #&run_each_fq($e_fn_fq)
+        );
+    }
+
+    for my $e_td (@td_pool)
+    {
+        $e_td->join();
+    }
+    say "\n\n\n- summary\n-----------------";
+    say join "\n", sort @run_logs_all;
+}
+
+sub say_time_diff_t0_t1($cmd,  $t0,$t1, $td_idx_)
+{
+        my ($cmd , $t0,$t1, $td_idx_) = ($_[0], $_[1], $_[2], $_[3]);
+        my $d = $t1 - $t0;
+        my @cmd_arr = split m/\s+/, $cmd;
+        my $loc_e = 2;
+        if (! -f $cmd_arr[$loc_e])
+        {
+                $loc_e = 1;
+        }
+        my $cmd_short = join " " , (split m/\s+/, $cmd)[0..$loc_e];
+        return "- thread id: $td_idx_, [ $cmd_short ], spend time $d seconds";
+}
+
+sub run_each_fq($fn_fq)
+{
+    my $fn_fq = shift;
+    my $ff="perl $ENV{perl_p}/ff.PL";
+
+    $fn_fq =~ s/^\s+//; chomp($fn_fq);
+    #say $fn_fq;
+    if ($fn_fq =~ m/^\#/)
+    {
+        return 0;
+    }
+
+    $td_idx++;
+
+    my $td_idx_ = $td_idx;
+        my $barcode = "AGCTAG";
+
+    my $cmd_pl = qq{sh old_pl/run_pl.sh $fn_fq 2>&1 | grep -A2 -P '^\#Total'| $ff 0 1};
+    my $cmd_cpp = qq{./mainapp.exe $fn_fq $barcode 2>&1 | grep -A2 -P '^\#Total'| $ff 0 1};
+
+    my $run_log_pl:shared ; my  $cnt_pl:shared;
+    my $run_log_cpp: shared; my $cnt_cpp :shared;
+
+    my $td_pl = threads->create(
+        \&run_each_shell,  $cmd_pl , $td_idx_,  \$run_log_pl, \$cnt_pl
+    );
+    my $td_cpp = threads->create(
+        \&run_each_shell,  $cmd_cpp , $td_idx_,  \$run_log_cpp, \$cnt_cpp
+    );
+
+    $td_cpp->join(); my $e_run_log_cpp = $run_log_cpp.  ", total:keep is $cnt_cpp";
+        say $e_run_log_cpp ;
+
+    $td_pl->join(); my $e_run_log_pl = $run_log_pl. ", total:keep is $cnt_pl";
+    say $e_run_log_pl ;
+
+    push @run_logs_all , ($e_run_log_pl, $e_run_log_cpp);
+
+    if ($cnt_pl ne $cnt_cpp)
+    {
+        say "- error, $td_idx_, [$cmd_pl] vs [$cmd_cpp] ";
+    }
+
+
+
+    my $_1=`basename $fn_fq`; chomp($_1);
+
+    my $fn_out_cpp = qq{./data/$_1.clean.fastq};
+    my $fn_out_pl = qq{./old_pl/$_1.clean.fastq};
+
+    if (`cksum $fn_out_cpp| $ff 0 1`  ne `cksum $fn_out_pl | $ff 0 1`)
+    {
+        say qq{vimdiff $fn_out_cpp $fn_out_pl};
+        #system(qq{vimdiff ./data/$_1.clean.fastq ./old_pl/$_1.clean.fastq});
+    }
+}
+
+sub run_each_shell($cmd_shell, $td_idx_,\$,\$)
+{
+    my $cmd_shell = shift;
+    my $td_idx_ = shift;
+    my $run_log_ref_ = shift;
+    my $cnt_ref_ = shift;
+
+    my $t0 = time();
+    #my $cmd_cpp = qq{./mainapp.exe $fn_fq};
+    my @cmd_out_ = qx{$cmd_shell};
+    my $t1 = time();
+
+    my $run_log = &say_time_diff_t0_t1($cmd_shell, $t0, $t1,$td_idx_);
+
+    chomp(@cmd_out_);
+    $$run_log_ref_ = $run_log;
+        my $cnt_bad_seq = $cmd_out_[1];
+        $cnt_bad_seq =~ s/\D/:/g;
+    $$cnt_ref_ = $cnt_bad_seq;
+
+    return ($run_log, $cnt_bad_seq);
+}
+
+EOF
+
