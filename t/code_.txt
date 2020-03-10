@@ -8371,3 +8371,15 @@ sub run_each_shell($cmd_shell, $td_idx_,\$,\$)
 
 EOF
 
+
+ std::getline(cin, e_s, '\n');
+
+ std::stringstream data(input_string);
+
+ while(getline(data, e_s, ' '))
+{
+
+}
+
+
+
