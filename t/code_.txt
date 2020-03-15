@@ -8383,3 +8383,37 @@ EOF
 
 
 
+#if 1
+// permutation by c++ , jd 20200315
+vector<string> perm(string S)
+{
+    if (S.size() == 1)
+    {
+        return vector<string> {S};
+    }
+    else if (S.size() == 2)
+    {
+        return vector<string> {string{ S[0],S[1] }, string{ S[1], S[0] }};
+    }
+    else
+    {
+        auto vector_S_n_1 = perm(S.substr(1));
+        vector<string> to_save = {};
+
+        for (auto e_s : vector_S_n_1)
+        {
+            auto len = e_s.size();
+            for (int i = 0; i < len + 1; i++)
+            {
+                auto s0_e_s = string{ S[0] } +e_s;
+                swap(s0_e_s[0], s0_e_s[i]);
+                to_save.push_back(s0_e_s);
+            }
+        }
+        return to_save;
+    }
+}
+
+#endif 
+
+
