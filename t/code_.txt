@@ -8417,3 +8417,5 @@ vector<string> perm(string S)
 #endif 
 
 
+sort(v_i.begin(), v_i.end(), [](int a,int b) {return a >= b; });
+
