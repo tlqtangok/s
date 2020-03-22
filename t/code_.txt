@@ -8454,3 +8454,7 @@ vector <vector<int>> v_v{
 5 2
 4 4
 */
+sort(v_v.begin(), v_v.end(), [](vector<int>& a, vector<int>& b) {return a[0]*8 - a[1] > b[0]*8 - b[1]; });
+
+sort(v_v.begin(), v_v.end(), [](vector<int> a, vector<int> b) {return a[0]*8 - a[1] > b[0]*8 - b[1]; });
+
