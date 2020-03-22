@@ -8458,3 +8458,20 @@ sort(v_v.begin(), v_v.end(), [](vector<int>& a, vector<int>& b) {return a[0]*8 -
 
 sort(v_v.begin(), v_v.end(), [](vector<int> a, vector<int> b) {return a[0]*8 - a[1] > b[0]*8 - b[1]; });
 
+
+// a, b, c, d, e
+// 0, 1, 2, 3, 4
+// if d =2, idx=3, 
+//ans : 
+// 0 3 1 2 4  //https://zhuanlan.zhihu.com/p/113431227
+void left_shift_idx_by_d(int d, int idx)
+{
+	printf("d:%d, idx:%d\n", d, idx);
+	auto temp = v_v[idx];
+	for (int i = idx-1; i >= idx - d; i--)
+	{
+		v_v[i + 1] = v_v[i];
+	}
+	v_v[idx - d] = temp;
+}
+
