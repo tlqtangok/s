@@ -8475,3 +8475,72 @@ void left_shift_idx_by_d(int d, int idx)
 	v_v[idx - d] = temp;
 }
 
+#if 1
+// include <deque>
+    std::deque<vector<int>> dq{
+        {1, 2},{ 3,4},{3,5},{5,4},{6,7}
+};
+    dq.push_back({ 33,33 });
+    dq.push_front({0,0});
+
+    int idx = 1;
+    dq.erase(dq.begin() + idx, dq.begin() + idx + 2);
+
+    dq.insert(dq.begin() + idx, { {11,11},{22,22} });
+
+    for (auto e : dq)
+    {
+        for (auto e_ : e)
+        {
+            cout << e_ << " ";
+        }
+        cout << endl;
+    }
+
+
+#endif 
+
+
+#if 1
+// #include <list>
+// c++ list usage, insert, pop
+	list<int> id_l{ 1,2,4 }; 
+
+	auto it_ = std::find(id_l.begin(), id_l.end(), 4);
+	id_l.insert(it_, 3);
+
+	id_l.push_back(5); //1 2 3 4 5
+	for (auto e : id_l)
+	{
+		cout << e << endl; 
+	}
+	cout << endl; 
+	int cnt = 0;
+
+	// auto tt = id_l.begin() + 2; compile error 
+	for (auto it = id_l.begin(); it != id_l.end(); it++)
+	{
+
+		if (cnt++ == 2)
+		{
+			assert(*it == 3);
+			id_l.erase(it++);
+			//cout << *it << endl;  //4
+			break;
+		}
+	}
+
+
+
+#endif 
+
+#if 1
+// sort list , vector 
+    list<int> id_l{ 3,4,1 }; 
+    id_l.sort([](int a, int b) {return a > b; });  // 1,3,4
+
+    vector<int> id_v{3,4,1};
+    std::sort(id_v.begin(), id_v.end(), [](int a, int b) {return a > b; });
+    id_v.insert(id_v.begin() + 2, 55); //{1,3,55,4}
+#endif 
+
