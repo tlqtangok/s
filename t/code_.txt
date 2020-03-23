@@ -8544,3 +8544,26 @@ void left_shift_idx_by_d(int d, int idx)
     id_v.insert(id_v.begin() + 2, 55); //{1,3,55,4}
 #endif 
 
+#if 1
+	// map will be ordered set, no repeated item
+#if 1
+    map<int, vector<int>> id_i_v{
+        { 1,{ 2,3 } },
+        { 4,{ 2,3 } },
+        { 0,{ 2,3 } },
+        { 4,{ 2,3 } },
+
+    };
+
+    for (auto e_m : id_i_v)
+    {
+        cout << e_m.first << ": ";
+        for (auto e : e_m.second)
+        {
+            cout << e << " ";
+        }
+        cout << endl;
+    }
+// 0,1,4
+#endif
+
