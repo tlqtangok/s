@@ -8567,3 +8567,13 @@ void left_shift_idx_by_d(int d, int idx)
 // 0,1,4
 #endif
 
+#if 1
+    // c++ set , order, no repeat  vs map
+    set<int> id_set{ 1,3,3,0 };
+
+    for (auto e : id_set)
+    {
+        cout << e << endl;  // 0,1,3
+    }
+#endif 
+
