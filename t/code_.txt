@@ -8617,3 +8617,9 @@ public:
 
 #endif
 
+
+bool CigarOperator::operator==(const CigarOperator & id_c1) const
+{
+    return this->id_SS == id_c1.id_SS;
+}
+
