@@ -8577,3 +8577,43 @@ void left_shift_idx_by_d(int d, int idx)
     }
 #endif 
 
+class A {
+public:
+    int x; 
+    int y;
+    A(int x, int y)
+    {
+        this->x = x + x; 
+        this->y = y; 
+        cout << x << endl;  // param it is param.x 
+    }
+};
+
+
+// C++ enum class 
+class E
+{
+public:
+    enum class E_inner
+    {
+        E0,
+        E1
+    };
+
+    E_inner id_E0;
+    E_inner id_E1;
+
+    E(E_inner e_)
+    {
+        id_E0 = e_;
+        id_E1 = e_;
+    }
+};
+
+
+#if 1
+  
+    E id_E(E::E_inner::E0);
+
+#endif
+
