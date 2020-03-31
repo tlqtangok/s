@@ -8623,3 +8623,25 @@ bool CigarOperator::operator==(const CigarOperator & id_c1) const
     return this->id_SS == id_c1.id_SS;
 }
 
+class A
+{
+public:
+    int x; 
+
+    static const A id_A0; 
+
+    static const A id_A1;
+
+    static A create(int x)
+    {
+        A id_A; 
+        id_A.x = x; 
+        return id_A;
+    };
+
+};
+
+const A A::id_A0 = create(22); 
+const A A::id_A1 = create(222);
+
+
