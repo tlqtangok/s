@@ -8645,3 +8645,38 @@ const A A::id_A0 = create(22);
 const A A::id_A1 = create(222);
 
 
+	auto cmd_get_bin_dir = string("readlink -f ") + string(argv[0]) + string(" | xargs dirname"); 
+	auto folder_bin = c_strip_barcode::run_cmd(cmd_get_bin_dir.c_str());
+	auto ret_code = chdir(folder_bin.c_str()); assert( ret_code == 0 ); 
+
+	if ( string("strip_barcode_fq") != c_strip_barcode::run_cmd("basename `pwd`") )
+	{
+		std::cerr << "- please run :[ cd strip_barcode_fq ] firstly" << endl;
+		assert(0==1); 
+	}
+
+
+
+	while (std::getline(if_, e_str))
+	{
+		auto v_idx = cnt_lines < e_line_sz ? cnt_lines : cnt_lines % e_line_sz;
+		v_str[v_idx] = e_str;
+
+		cnt_lines++;
+
+		if (0 == cnt_lines % e_line_sz)
+		{
+			int flag_filter_out = id_c_strip.filter_e_barcode_out(v_str); 
+			id_c_strip.stat_e_total_keep(flag_filter_out);
+
+			if ( 0 == flag_filter_out )
+			{
+				id_c_strip.p_s_2_file(v_str, of_, len_barcode + 1); 
+			}
+		}
+	} // end while ()
+
+
+		sscanf(e_str.c_str(), "%s\t%d\t%d", buf_0, &buf_1, &buf_2);
+
+
