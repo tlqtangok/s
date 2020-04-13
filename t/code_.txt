@@ -8680,3 +8680,6 @@ const A A::id_A1 = create(222);
 		sscanf(e_str.c_str(), "%s\t%d\t%d", buf_0, &buf_1, &buf_2);
 
 
+# perl set var :
+$Len ||=35;
+
