@@ -8683,3 +8683,10 @@ const A A::id_A1 = create(222);
 # perl set var :
 $Len ||=35;
 
+string c_filter::get_root_path(int argc, char** argv)
+{
+    string abs_root = run_cmd( string("readlink -f  ")+  string(argv[0]) + " | xargs dirname" ); 
+    return abs_root; 
+}
+
+
