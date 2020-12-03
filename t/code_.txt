@@ -8770,3 +8770,22 @@ echo x is $X
 
 EOF
 
+
+#include <sys/time.h>
+usleep( 10000 );  // 1/100 second 
+
+#if 1
+        auto begin_runnig_time = std::chrono::steady_clock::now();
+
+        system("sleep 4s");
+        auto end_runnig_time = std::chrono::steady_clock::now();
+
+        auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(end_runnig_time - begin_runnig_time).count();
+
+        cout << t/1e9 << endl;
+
+
+
+
+#endif
+
