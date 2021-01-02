@@ -8820,3 +8820,70 @@ if __name__ == "__main__":
 EOF
 
 
+
+#if 1
+
+	queue <int *> q_i; 
+
+	int a0 = 0; 
+	int a1 = 1; 
+	int a2 = 2; 
+	int a3 = 3; 
+
+	int * arr[] = {&a0, &a1, &a2, &a3}; 
+
+	auto td_0_fun =  [&arr](queue<int*> & q_i_){
+
+		const int MAX = 4; 
+		int cnt = 0;
+
+		while(1)
+		{
+			if ( MAX > q_i_.size() )
+			{
+				q_i_.push(arr[cnt % MAX]); 
+				cnt++;
+				sleep(1); 
+			}
+		}
+
+
+	};
+
+	auto td_1_fun = [&arr](queue<int*> & q_i_){
+		const int MAX = 4; 
+
+		while(1)
+		{
+			if ( 0 < q_i_.size() )
+			{
+				auto e_pop = q_i_.front(); 
+				cout << *e_pop << endl; 
+				q_i_.pop(); 
+				sleep(1); 
+			}
+		}
+
+
+	};
+
+
+	auto td_0 =	std::thread(
+			td_0_fun,
+			std::ref(q_i)
+			); 
+
+	auto td_1 =	std::thread(
+
+			td_1_fun,
+
+			std::ref(q_i)
+
+			); 
+
+	td_0.join(); 
+	td_1.join(); 
+#endif 
+
+
+
