@@ -8887,3 +8887,42 @@ EOF
 
 
 
+
+__host__ int CPU::gz_get_len_read(const char *fn_fq_gz)
+{
+	gzFile fp = gzopen(fn_fq_gz, "r");
+	assert(fp); 
+	char buf[1024]; 
+	string e_line = "NULL"; 
+	CPU::gz_getline(fp, e_line, buf); 
+	CPU::gz_getline(fp, e_line, buf); 
+	assert(e_line.size() > 0); 
+	gzclose(fp); 
+	return e_line.size(); 
+}
+
+
+
+__host__ int  CPU::gz_getline(gzFile &fp, string &e_line, char *buf)
+{
+	const int MAX_BUF = 1024;   // to long line may need tune this
+	//char buf[MAX_BUF]; 
+	int cnt = 0; 
+	while(cnt < MAX_BUF)
+	{
+
+		int err_code = gzread(fp,buf + cnt, 1);  
+		if (!err_code) {cnt = 0; break;}
+		if ( buf[cnt] == '\n' ) 
+		{ 
+			e_line = string(buf, buf+cnt); 	
+			break;
+		}
+
+		cnt++;
+	}
+	return cnt; 
+}
+
+
+
