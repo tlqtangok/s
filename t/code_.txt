@@ -8926,3 +8926,37 @@ __host__ int  CPU::gz_getline(gzFile &fp, string &e_line, char *buf)
 
 
 
+cd /home/tanglq/jd/t/git/gtx_align/prog && /usr/bin/c++    -fvisibility=hidden -L/usr/local/cuda/lib64  CMakeFiles/gtx_align.dir/main.cpp.o  -o gtx_align -rdynamic /home/tanglq/jd/t/git/gtx_align/test.a ../src/libgtx_mapping.a ../fpga/libgtx_fpga.a ../scheduler/libgtx_scheduler.a ../3thlib/tbblib/tbb_release/libtbb.a ../3thlib/tbblib/tbb_release/libtbbmalloc.a ../3thlib/isallib/.libs/libisal.a ../3thlib/lib/libhts.a -Wl,-Bstatic -lz -Wl,-Bdynamic -lpthread -ldl -lcudart -lstdc++
+
+
+inline int env_pt(const char *v_name, void * pt)
+{
+        uint64_t pt_i = (uint64_t)pt;
+        //std::string  stm = std::string(v_name) + std::string("=") + std::to_string(pt_i);
+        //int ret_code = putenv((char*)(stm.c_str()));
+        int ret_code = setenv(v_name, std::to_string(pt_i).c_str(), 1);
+
+        //cout << ret_code << endl;
+        assert(ret_code == 0);
+        return ret_code;
+
+}
+
+uint64_t de_env_pt(const char *v_name)
+{
+
+        uint64_t pt = (uint64_t)(atol(getenv(v_name)));
+        return pt;
+}
+
+
+
+class C: public std::enable_shared_from_this<C> {
+
+		std::shared_ptr<C> thisdev = this->shared_from_this();
+
+
+		std::shared_ptr<Good> gp1(new Good());
+		std::shared_ptr<Good> gp2 = gp1->shared_from_this();
+
+		// avoid double deconstructor issue
