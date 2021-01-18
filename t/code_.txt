@@ -8960,3 +8960,83 @@ class C: public std::enable_shared_from_this<C> {
 		std::shared_ptr<Good> gp2 = gp1->shared_from_this();
 
 		// avoid double deconstructor issue
+
+#if 1
+	std::function<int(int)> id_fun; 
+
+	int t0 = 1; 
+	id_fun = [&t0](int  a)
+	{
+		return a*2 + t0;
+	};
+
+	cout << id_fun(7) << endl;;
+
+
+	vector< std::function<int(int)> > v_func; 
+	v_func.resize(10); 
+	for(auto &e: v_func)
+	{
+		e = id_fun; 
+	}
+
+	int a =0; 
+	for(auto e: v_func)   // for (auto &e:xxx)
+	{
+
+		cout << 	e(a++) <<endl;; 
+	}
+#endif 
+
+
+
+#if 1
+
+
+//#include <tbb/concurrent_queue.h>
+
+        tbb::concurrent_bounded_queue<int> q_i;
+
+        auto td_push = std::thread(
+                        [&q_i](){
+                        //sleep(1);
+                        for(int i=0;i<40;i++)
+                        {
+                        q_i.push(i*10);
+
+                        }
+                        }
+                        );
+
+        td_push.join();
+
+
+        auto td_1 = std::thread([&q_i]()
+                        {
+                        int t=100;
+                        while(q_i.try_pop(t))
+                        {
+                        //cout << "- td_1: " << t << endl;
+                        printf("- td_1: %d\n", t);
+                        }
+
+                        }
+                        );
+        auto td_0 = std::thread([&q_i]()
+                        {
+                        int t=10;
+                        while(q_i.try_pop(t))
+                        {
+                        printf("- td_0: %d\n", t);
+                        }
+                        }
+                        );
+
+
+        td_0.join();
+        td_1.join();
+
+#endif
+
+
+
