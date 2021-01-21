@@ -9042,14 +9042,15 @@ class C: public std::enable_shared_from_this<C> {
 
 
 // namespace ns_0 example
-
 *********************
 ns_0.h
 *********************
 namespace ns_0
 {
-extern int i_ns; 
-void fun(); 
+extern int *p_i;
+extern int i_ns;
+extern volatile const int s_i;
+void fun();
 };
 
 *********************
@@ -9057,12 +9058,15 @@ ns_0.cpp
 *********************
 #include "ns_0.h"
 
-int ns_0::i_ns = 99; 
+int ns_0::i_ns = 99;
+int *ns_0::p_i = nullptr;
+static volatile const int s_i = 99999;
 
 void ns_0::fun()
 {
-int t = 99; 
+        int t = 99;
 }
+
 
 *********************
 main.cpp
