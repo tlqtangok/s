@@ -9040,3 +9040,59 @@ class C: public std::enable_shared_from_this<C> {
 
 
 
+
+// namespace ns_0 example
+
+*********************
+ns_0.h
+*********************
+namespace ns_0
+{
+extern int i_ns; 
+void fun(); 
+};
+
+*********************
+ns_0.cpp
+*********************
+#include "ns_0.h"
+
+int ns_0::i_ns = 99; 
+
+void ns_0::fun()
+{
+int t = 99; 
+}
+
+*********************
+main.cpp
+*********************
+//#include "common.hpp"
+/*
+ * jd create at 2018-02-28
+ * to build & run on Linux, just run :
+ * make
+ */
+
+#include "header.inc"
+
+#include "ns_0.h"
+
+
+
+using std::default_random_engine;
+// st__ main_
+int main(int argc, char **argv)
+{
+
+#if 1
+	ns_0::i_ns = 999; 
+	cout << ns_0::i_ns << endl; 
+
+	ns_0::fun(); 
+
+#endif 
+
+	return 0; 
+
+}
