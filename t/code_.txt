@@ -9100,6 +9100,8 @@ int main(int argc, char **argv)
 	return 0; 
 
 }
+
+#pragma pack(1)
 struct s_a{
 uint8_t b0:1;
 uint8_t b1:2;
@@ -9109,7 +9111,10 @@ uint8_t b3:1;
 uint8_t b4:1;
 uint8_t b5:1;
 uint8_t b6:1;
+uint64_t reserved[6]; 
 };
+#pragma pack()
+
 
 
 using std::default_random_engine;
