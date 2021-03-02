@@ -9100,3 +9100,35 @@ int main(int argc, char **argv)
 	return 0; 
 
 }
+struct s_a{
+uint8_t b0:1;
+uint8_t b1:2;
+uint8_t b2:1;
+uint8_t b3:1;
+
+uint8_t b4:1;
+uint8_t b5:1;
+uint8_t b6:1;
+};
+
+
+using std::default_random_engine;
+// st__ main_
+int main(int argc, char **argv)
+{
+
+#if 1
+
+        s_a id_s_a;
+        id_s_a.b0 = 1;
+        id_s_a.b1 = 0x2;
+
+        uint8_t u8_t;
+        memcpy(&u8_t, &id_s_a, 1);
+
+        printf("%x\n", u8_t);  // 5
+
+#endif
+
+}
+
