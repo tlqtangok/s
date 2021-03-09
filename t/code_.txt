@@ -9137,3 +9137,27 @@ int main(int argc, char **argv)
 
 }
 
+// read file
+
+#if 1
+        ifstream if_("txt.txt"); assert(if_.is_open());
+        char tmp[4]={0};
+
+#if 1
+        int cnt = 0;
+        while ( if_.good())
+        {
+                if_.read(tmp, 3);
+                auto cnt = if_.gcount();
+                cout << cnt << endl;
+
+                //printf("___%c,%c,%c___:", tmp[0], tmp[1], tmp[2]);
+
+                memset(tmp, 0, 3);
+        }
+#endif
+        if_.close();
+
+#endif
+
+
