@@ -9161,3 +9161,6 @@ int main(int argc, char **argv)
 #endif
 
 
+
+printf("- reg_idx: 0x%x, val : 0x%08x\n", reg_idx, reg_val);
+
