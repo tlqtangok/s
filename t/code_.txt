@@ -9164,3 +9164,15 @@ int main(int argc, char **argv)
 
 printf("- reg_idx: 0x%x, val : 0x%08x\n", reg_idx, reg_val);
 
+
+// get file size , by c++
+#if 1
+ifstream if_("txt.txt"); assert(if_.is_open());
+
+if_.seekg(0, ios::end);
+cout << if_.tellg() << endl;;
+
+if_.close();
+#endif
+
+
