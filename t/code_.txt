@@ -9176,3 +9176,7 @@ if_.close();
 #endif
 
 
+// type cast
+
+            volatile uint8_t *pe_result_from_pcie_raw = reinterpret_cast<volatile uint8_t *>(fpga_output_addr_reads.get_buffer());
+
