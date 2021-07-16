@@ -8942,13 +8942,22 @@ inline int env_pt(const char *v_name, void * pt)
 
 }
 
+	// jd add
+	env_pt("env_record_num_per_block", (void*)&record_num_per_block);
+	// jd end
+
+
 uint64_t de_env_pt(const char *v_name)
 {
+
+
 
         uint64_t pt = (uint64_t)(atol(getenv(v_name)));
         return pt;
 }
 
+		uint64_t u64_record_num_per_block = de_env_pt("env_record_num_per_block");
+		record_num_per_block = *((uint32_t*)u64_record_num_per_block);
 
 
 class C: public std::enable_shared_from_this<C> {
